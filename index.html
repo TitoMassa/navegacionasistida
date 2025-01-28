@@ -1,50 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Navegación Asistida v0.1</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navegación Asistida v0.1</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Navegación Asistida v0.1</h1>
-  </header>
-
-  <main>
-    <section>
-      <h2>Configuración de Ruta</h2>
-      <form id="route-form">
-        <label for="start-location">Inicio:</label>
-        <select id="start-location">
-          <option value="current">Mi ubicación actual</option>
-        </select>
-        <button type="button" id="save-start">Guardar como inicio</button>
-
-        <label for="end-location">Destino:</label>
-        <select id="end-location"></select>
-        <button type="button" id="save-end">Guardar como destino</button>
-
-        <label for="start-time">Hora de inicio:</label>
-        <input type="time" id="start-time" required>
+    <div class="container">
+        <h1>Navegación Asistida v0.1</h1>
         
-        <label for="end-time">Hora de llegada:</label>
-        <input type="time" id="end-time" required>
+        <div class="controls">
+            <div class="input-group">
+                <label>Inicio:</label>
+                <select id="startPoint">
+                    <option value="current">Ubicación actual</option>
+                </select>
+                <button onclick="saveLocation('start')">Guardar</button>
+            </div>
+            
+            <div class="input-group">
+                <label>Destino:</label>
+                <select id="endPoint"></select>
+                <button onclick="saveLocation('end')">Guardar</button>
+            </div>
+            
+            <div class="input-group">
+                <label>Hora inicio:</label>
+                <input type="time" id="startTime" required>
+            </div>
+            
+            <div class="input-group">
+                <label>Hora llegada:</label>
+                <input type="time" id="endTime" required>
+            </div>
+            
+            <button onclick="startNavigation()">Iniciar navegación</button>
+        </div>
+
+        <div id="timeDisplay">--:--</div>
         
-        <button type="button" id="start-route">Iniciar Ruta</button>
-      </form>
-    </section>
+        <div class="saved-locations">
+            <h3>Ubicaciones guardadas:</h3>
+            <ul id="locationList"></ul>
+        </div>
+        
+        <footer>
+            <p>© 2025 Tito Massa - Todos los derechos reservados</p>
+        </footer>
+    </div>
 
-    <section id="status">
-      <h2>Estado de la Ruta</h2>
-      <p id="time-difference">Tiempo restante: --:--</p>
-    </section>
-  </main>
-
-  <footer>
-    <p>@ 2025 Tito Massa - Todos los derechos reservados</p>
-  </footer>
-
-  <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
