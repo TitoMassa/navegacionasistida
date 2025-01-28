@@ -17,11 +17,6 @@
 
             <div class="grupo-formulario" id="grupo-inicio">
                 <label>Coordenadas de inicio:</label>
-                <div class="grupo-botones">
-                    <select id="ubicaciones-inicio">
-                        <option value="">-- Seleccionar --</option>
-                    </select>
-                </div>
                 <input type="number" step="any" id="start-lat" placeholder="Latitud">
                 <input type="number" step="any" id="start-lon" placeholder="Longitud">
             </div>
@@ -32,6 +27,8 @@
                     <select id="ubicaciones-predefinidas">
                         <option value="">-- Seleccionar --</option>
                     </select>
+                    <button type="button" id="btn-usar-inicio" class="btn-secundario">Usar como inicio</button>
+                    <button type="button" id="btn-usar-destino" class="btn-secundario">Usar como destino</button>
                     <button type="button" id="btn-guardar-ubicacion" class="btn-secundario">Guardar Nueva</button>
                     <button type="button" id="btn-eliminar" class="btn-eliminar">Eliminar</button>
                 </div>
