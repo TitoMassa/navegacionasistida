@@ -6,14 +6,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const ubicacionActual = document.getElementById('ubicacion-actual');
     const grupoInicio = document.getElementById('grupo-inicio');
 
+    // Manejar ubicaciones predefinidas
+    document.getElementById('ubicaciones-predefinidas').addEventListener('change', function() {
+        if (this.value) {
+            const selected = this.options[this.selectedIndex];
+            document.getElementById('dest-lat').value = selected.dataset.lat;
+            document.getElementById('dest-lon').value = selected.dataset.lon;
+        }
+    });
+
+    // Habilitar/deshabilitar coordenadas de inicio
     ubicacionActual.addEventListener('change', () => {
         const inputs = grupoInicio.querySelectorAll('input');
         inputs.forEach(input => input.disabled = ubicacionActual.checked);
     });
 
+    // Manejar envío del formulario
     document.getElementById('formulario').addEventListener('submit', function(e) {
         e.preventDefault();
         detenerSeguimiento();
+        document.getElementById('resultado').textContent = 'Calculando...';
         
         if (ubicacionActual.checked) {
             navigator.geolocation.getCurrentPosition(
@@ -63,15 +75,14 @@ function iniciarNavegacion(startLat, startLon) {
         return;
     }
 
-    const tiempoTotal = arrivalTime - startTime;
-    
     // Iniciar seguimiento de posición
     watchId = navigator.geolocation.watchPosition(
         pos => {
             currentPosition.lat = pos.coords.latitude;
             currentPosition.lon = pos.coords.longitude;
         },
-        error => alert('Error obteniendo ubicación: ' + error.message)
+        error => alert('Error obteniendo ubicación: ' + error.message),
+        { enableHighAccuracy: true }
     );
 
     // Actualizar cada 5 segundos
@@ -91,8 +102,9 @@ function iniciarNavegacion(startLat, startLon) {
             diferenciaTiempo = `+${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
         } else {
             // Calcular diferencia de tiempo
-            const tiempoEsperado = (distanciaActual / distanciaTotal) * tiempoTotal;
-            const diferencia = ahora - (startTime.getTime() + tiempoEsperado);
+            const tiempoEsperado = (distanciaActual / distanciaTotal) * (arrivalTime - startTime);
+            const tiempoRealTranscurrido = ahora - startTime;
+            const diferencia = tiempoRealTranscurrido - tiempoEsperado;
             
             const absDiferencia = Math.abs(diferencia);
             const minutos = Math.floor(absDiferencia / 60000);
