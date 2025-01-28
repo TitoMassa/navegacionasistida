@@ -7,53 +7,51 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Navegación Asistida v0.1</h1>
-        
-        <div class="input-group">
-            <label>Inicio:</label>
-            <select id="startSelect">
-                <option value="">Seleccionar ubicación</option>
+    <h1>Navegación Asistida v0.1</h1>
+
+    <section id="location-input">
+        <h2>Configuración de Ruta</h2>
+
+        <div class="location-group">
+            <label for="start-location">Ubicación de Inicio:</label>
+            <select id="start-location">
+                <option value="current">Mi ubicación actual</option>
             </select>
-            <button onclick="useCurrentLocation('start')">Usar ubicación actual</button>
+            <button id="get-current-location-start">Usar mi ubicación actual</button>
+            <input type="text" id="start-location-manual" placeholder="Latitud, Longitud (ej: -34.6037, -58.3816)" style="display: none;">
         </div>
 
-        <div class="input-group">
-            <label>Destino:</label>
-            <select id="destSelect">
-                <option value="">Seleccionar ubicación</option>
+        <div class="location-group">
+            <label for="destination-location">Ubicación de Destino:</label>
+            <select id="destination-location">
+                <option value="">Seleccionar ubicación guardada</option>
             </select>
-            <button onclick="useCurrentLocation('dest')">Usar ubicación actual</button>
+            <input type="text" id="destination-location-manual" placeholder="Latitud, Longitud (ej: -34.6037, -58.3816)">
         </div>
 
-        <div class="input-group">
-            <label>Hora de inicio:</label>
-            <input type="datetime-local" id="startTime">
+        <div class="time-group">
+            <label for="arrival-time">Hora de Llegada Programada:</label>
+            <input type="time" id="arrival-time" required>
         </div>
+    </section>
 
-        <div class="input-group">
-            <label>Hora de llegada:</label>
-            <input type="datetime-local" id="arrivalTime">
+    <section id="saved-locations">
+        <h2>Ubicaciones Guardadas</h2>
+        <ul id="saved-locations-list"></ul>
+        <div class="save-location-form">
+            <input type="text" id="save-location-name" placeholder="Nombre de la ubicación">
+            <button id="save-location-button">Guardar ubicación actual</button>
         </div>
+    </section>
 
-        <button onclick="startNavigation()" class="main-button">Iniciar Navegación</button>
-        
-        <div id="status" class="time-display">--:--</div>
+    <section id="time-difference-display">
+        <h2>Estado del Viaje</h2>
+        <p id="time-status">Esperando ubicación...</p>
+    </section>
 
-        <div class="save-location">
-            <input type="text" id="locationName" placeholder="Nombre de ubicación">
-            <button onclick="saveLocation()">Guardar Ubicación</button>
-        </div>
-
-        <div class="saved-locations">
-            <h3>Ubicaciones guardadas:</h3>
-            <ul id="locationsList"></ul>
-        </div>
-
-        <div class="copyright">
-            © 2025 Tito Massa - Todos los derechos reservados
-        </div>
-    </div>
+    <footer>
+        <p>© 2025 Tito Massa todos los derechos reservados</p>
+    </footer>
 
     <script src="script.js"></script>
 </body>
