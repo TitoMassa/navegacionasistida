@@ -3,16 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Proyecto Web</title>
+    <title>Navegación Asistida v0.1</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Bienvenido a mi Proyecto</h1>
-        <p>Este es un proyecto web básico</p>
+    <div class="contenedor">
+        <h1>Navegación Asistida v0.1</h1>
         
-        <button id="btnSaludo" class="btn">Haz clic aquí</button>
-        <div id="resultado"></div>
+        <form id="formulario">
+            <div class="grupo-formulario">
+                <label><input type="checkbox" id="ubicacion-actual"> Usar ubicación actual como inicio</label>
+            </div>
+
+            <div class="grupo-formulario" id="grupo-inicio">
+                <label>Coordenadas de inicio:</label>
+                <input type="number" step="any" id="start-lat" placeholder="Latitud" disabled>
+                <input type="number" step="any" id="start-lon" placeholder="Longitud" disabled>
+            </div>
+
+            <div class="grupo-formulario">
+                <label>Coordenadas de destino:</label>
+                <input type="number" step="any" id="dest-lat" placeholder="Latitud">
+                <input type="number" step="any" id="dest-lon" placeholder="Longitud">
+            </div>
+
+            <div class="grupo-formulario">
+                <label>Hora de inicio:</label>
+                <input type="datetime-local" id="start-time" required>
+            </div>
+
+            <div class="grupo-formulario">
+                <label>Hora de llegada programada:</label>
+                <input type="datetime-local" id="arrival-time" required>
+            </div>
+
+            <button type="submit">Iniciar navegación</button>
+        </form>
+
+        <div id="resultado" class="resultado"></div>
+        
+        <footer>
+            <p>© 2025 Tito Massa - Todos los derechos reservados</p>
+        </footer>
     </div>
 
     <script src="script.js"></script>
