@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navegación Asistida v0.1</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Navegación Asistida v0.1</h1>
+
+    <div class="container">
+        <div class="location-input">
+            <h2>Ubicaciones</h2>
+            <div class="input-group">
+                <label for="start-location">Inicio:</label>
+                <select id="start-location">
+                    <option value="current">Ubicación Actual</option>
+                    <!-- Predefined locations will be added here -->
+                </select>
+                <button id="use-current-as-start">Usar mi ubicación</button>
+            </div>
+            <div class="input-group">
+                <label for="destination-location">Destino:</label>
+                <select id="destination-location">
+                    <!-- Predefined locations will be added here -->
+                </select>
+            </div>
+        </div>
+
+        <div class="time-input">
+            <h2>Horarios</h2>
+            <div class="input-group">
+                <label for="start-time">Hora de Inicio:</label>
+                <input type="time" id="start-time">
+            </div>
+            <div class="input-group">
+                <label for="arrival-time">Hora de Llegada:</label>
+                <input type="time" id="arrival-time">
+            </div>
+        </div>
+
+        <div class="predefined-locations-management">
+            <h2>Ubicaciones Predefinidas</h2>
+            <div class="input-group">
+                <label for="new-location-name">Nombre:</label>
+                <input type="text" id="new-location-name">
+            </div>
+            <div class="input-group">
+                <label for="new-location-coords">Coordenadas (Latitud, Longitud):</label>
+                <input type="text" id="new-location-coords" placeholder="Ej: -34.6037, -58.3816">
+            </div>
+            <button id="save-location">Guardar Ubicación</button>
+            <ul id="saved-locations-list">
+                <!-- Saved locations will be listed here -->
+            </ul>
+        </div>
+
+        <div class="time-difference-display">
+            <h2>Estado del Viaje</h2>
+            <div id="time-difference" class="time-green">+00:00</div>
+            <p id="status-message"></p>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025 Tito Massa todos los derechos reservados</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
