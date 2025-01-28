@@ -1,98 +1,61 @@
-/* style.css */
 body {
-    font-family: sans-serif;
-    margin: 20px;
-    color: #333;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f9f9f9;
+  color: #333;
 }
 
-h1, h2 {
-    color: #0056b3;
+header {
+  background-color: #4CAF50;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+}
+
+main {
+  padding: 1rem;
 }
 
 section {
-    margin-bottom: 20px;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-
-.location-group, .time-group, .save-location-form {
-    margin-bottom: 10px;
+  margin-bottom: 2rem;
 }
 
 label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
+  display: block;
+  margin-bottom: 0.5rem;
 }
 
-input[type="text"],
-input[type="time"],
-select {
-    width: calc(100% - 12px);
-    padding: 8px;
-    margin-bottom: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+input, select, button {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  width: 100%;
 }
 
-button {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 4px;
-    background-color: #007bff;
-    color: white;
-    cursor: pointer;
+#time-difference {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-top: 1rem;
 }
 
-button:hover {
-    background-color: #0056b3;
+#time-difference.red {
+  color: red;
 }
 
-#time-difference-display p {
-    font-size: 2em;
-    font-weight: bold;
-    text-align: center;
+#time-difference.green {
+  color: green;
 }
 
-.time-red {
-    color: red;
-}
-
-.time-green {
-    color: green;
-}
-
-.time-blue {
-    color: blue;
-}
-
-#saved-locations-list li {
-    margin-bottom: 5px;
-    padding: 5px;
-    border-bottom: 1px dashed #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-#saved-locations-list li:last-child {
-    border-bottom: none;
-}
-
-#saved-locations-list button {
-    background-color: #dc3545; /* Red color for delete button */
-}
-
-#saved-locations-list button:hover {
-    background-color: #c82333;
+#time-difference.blue {
+  color: blue;
 }
 
 footer {
-    text-align: center;
-    margin-top: 30px;
-    padding-top: 10px;
-    border-top: 1px solid #ddd;
-    color: #777;
-    font-size: 0.9em;
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 1rem 0;
+  position: fixed;
+  width: 100%;
+  bottom: 0;
 }
