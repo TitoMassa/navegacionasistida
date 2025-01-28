@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('ubicaciones-inicio-predefinidas').addEventListener('change', function() {
+    document.getElementById('ubicaciones-inicio').addEventListener('change', function() {
         if (this.value) {
             const selected = this.options[this.selectedIndex];
             document.getElementById('start-lat').value = selected.dataset.lat;
@@ -46,9 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
     ubicacionActual.addEventListener('change', () => {
         const inputs = grupoInicio.querySelectorAll('input');
         const select = grupoInicio.querySelector('select');
-        inputs.forEach(input => input.disabled = ubicacionActual.checked);
-        select.disabled = ubicacionActual.checked;
+        const isDisabled = ubicacionActual.checked;
+        inputs.forEach(input => input.disabled = isDisabled);
+        select.disabled = isDisabled;
     });
+    
+    ubicacionActual.dispatchEvent(new Event('change'));
 
     document.getElementById('formulario').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -59,11 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function cargarUbicacionesGuardadas() {
-    const selects = [
-        document.getElementById('ubicaciones-predefinidas'),
-        document.getElementById('ubicaciones-inicio-predefinidas')
-    ];
-    
+    const selects = ['ubicaciones-predefinidas', 'ubicaciones-inicio'].map(id => document.getElementById(id));
     selects.forEach(select => {
         select.innerHTML = '<option value="">-- Seleccionar --</option>';
         savedLocations.forEach(loc => {
@@ -76,6 +75,7 @@ function cargarUbicacionesGuardadas() {
     });
 }
 
-// Las funciones restantes (guardarNuevaUbicacion, eliminarUbicacion, iniciarNavegacionHandler, etc.)
-// permanecen iguales que en el código original proporcionado
-// ... [El resto del código JavaScript permanece sin cambios] ...
+// Resto del código se mantiene igual...
+// [Las funciones guardarNuevaUbicacion, eliminarUbicacion, iniciarNavegacionHandler, 
+// iniciarNavegacion, calcularDistancia, detenerHandler, detenerSeguimiento 
+// permanecen sin cambios del código original proporcionado]
