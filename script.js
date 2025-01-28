@@ -1,12 +1,28 @@
 let watchId = null;
 let intervaloActualizacion = null;
 let currentPosition = { lat: null, lon: null };
+let savedLocations = JSON.parse(localStorage.getItem('savedLocations')) || [];
 
 document.addEventListener('DOMContentLoaded', () => {
     const ubicacionActual = document.getElementById('ubicacion-actual');
     const grupoInicio = document.getElementById('grupo-inicio');
+    const saveForm = document.querySelector('.guardar-ubicacion');
 
-    // Manejar ubicaciones predefinidas
+    // Cargar ubicaciones guardadas
+    cargarUbicacionesGuardadas();
+
+    // Mostrar/ocultar formulario para guardar
+    document.getElementById('btn-guardar-ubicacion').addEventListener('click', () => {
+        saveForm.style.display = saveForm.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Guardar nueva ubicación
+    document.querySelector('.guardar-ubicacion').addEventListener('submit', (e) => {
+        e.preventDefault();
+        guardarNuevaUbicacion();
+    });
+
+    // Selección de ubicaciones predefinidas
     document.getElementById('ubicaciones-predefinidas').addEventListener('change', function() {
         if (this.value) {
             const selected = this.options[this.selectedIndex];
@@ -21,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inputs.forEach(input => input.disabled = ubicacionActual.checked);
     });
 
-    // Manejar envío del formulario
+    // Manejar envío del formulario principal
     document.getElementById('formulario').addEventListener('submit', function(e) {
         e.preventDefault();
         detenerSeguimiento();
@@ -44,6 +60,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+function cargarUbicacionesGuardadas() {
+    const select = document.getElementById('ubicaciones-predefinidas');
+    select.innerHTML = '<option value="">-- Seleccionar --</option>' + 
+        '<option data-lat="-27.466250297959185" data-lon="-58.826945546938774">PELLEGRINI 1858</option>';
+    
+    savedLocations.forEach(loc => {
+        const option = document.createElement('option');
+        option.text = loc.nombre;
+        option.dataset.lat = loc.lat;
+        option.dataset.lon = loc.lon;
+        select.add(option);
+    });
+}
+
+function guardarNuevaUbicacion() {
+    const nombre = document.getElementById('nombre-ubicacion').value;
+    const lat = parseFloat(document.getElementById('new-lat').value);
+    const lon = parseFloat(document.getElementById('new-lon').value);
+
+    if (!nombre || isNaN(lat) || isNaN(lon)) {
+        alert('Complete todos los campos correctamente');
+        return;
+    }
+
+    savedLocations.push({ nombre, lat, lon });
+    localStorage.setItem('savedLocations', JSON.stringify(savedLocations));
+    cargarUbicacionesGuardadas();
+    
+    document.getElementById('nombre-ubicacion').value = '';
+    document.getElementById('new-lat').value = '';
+    document.getElementById('new-lon').value = '';
+    document.querySelector('.guardar-ubicacion').style.display = 'none';
+}
 
 function detenerSeguimiento() {
     if (watchId) navigator.geolocation.clearWatch(watchId);
@@ -75,46 +125,46 @@ function iniciarNavegacion(startLat, startLon) {
         return;
     }
 
-    // Iniciar seguimiento de posición
     watchId = navigator.geolocation.watchPosition(
-        pos => {
-            currentPosition.lat = pos.coords.latitude;
-            currentPosition.lon = pos.coords.longitude;
-        },
+        pos => currentPosition = { lat: pos.coords.latitude, lon: pos.coords.longitude },
         error => alert('Error obteniendo ubicación: ' + error.message),
         { enableHighAccuracy: true }
     );
 
-    // Actualizar cada 5 segundos
     intervaloActualizacion = setInterval(() => {
         if (!currentPosition.lat || !currentPosition.lon) return;
         
         const ahora = new Date();
         const distanciaActual = calcularDistancia(startLat, startLon, currentPosition.lat, currentPosition.lon);
+        const resultado = document.getElementById('resultado');
         
-        let diferenciaTiempo;
+        let diferenciaTiempo, claseColor;
 
         if (ahora < startTime && distanciaActual < 50) {
-            // Tiempo restante para inicio
             const restante = startTime - ahora;
             const minutos = Math.floor(restante / 60000);
             const segundos = Math.floor((restante % 60000) / 1000);
             diferenciaTiempo = `+${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+            claseColor = 'blue';
         } else {
-            // Calcular diferencia de tiempo
             const tiempoEsperado = (distanciaActual / distanciaTotal) * (arrivalTime - startTime);
-            const tiempoRealTranscurrido = ahora - startTime;
-            const diferencia = tiempoRealTranscurrido - tiempoEsperado;
+            const tiempoReal = ahora - startTime;
+            const diferencia = tiempoReal - tiempoEsperado;
             
             const absDiferencia = Math.abs(diferencia);
             const minutos = Math.floor(absDiferencia / 60000);
             const segundos = Math.floor((absDiferencia % 60000) / 1000);
             const signo = diferencia >= 0 ? '-' : '+';
-            
             diferenciaTiempo = `${signo}${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+
+            // Determinar color según diferencia
+            if (diferencia >= 120000) claseColor = 'red';       // +2 minutos
+            else if (diferencia <= -120000) claseColor = 'blue'; // -2 minutos
+            else claseColor = 'green';                          // Dentro de tolerancia
         }
 
-        document.getElementById('resultado').textContent = diferenciaTiempo;
+        resultado.textContent = diferenciaTiempo;
+        resultado.className = `resultado ${claseColor}`;
     }, 5000);
 }
 
@@ -125,9 +175,7 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
     const Δφ = (lat2 - lat1) * Math.PI / 180;
     const Δλ = (lon2 - lon1) * Math.PI / 180;
 
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const a = Math.sin(Δφ/2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     
     return R * c;
