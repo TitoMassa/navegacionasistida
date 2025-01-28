@@ -1,99 +1,98 @@
+/* style.css */
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: #f0f0f0;
-}
-
-.container {
-    max-width: 800px;
-    margin: 0 auto;
-    background-color: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
-
-h1 {
+    font-family: sans-serif;
+    margin: 20px;
     color: #333;
-    text-align: center;
 }
 
-.input-group {
-    margin: 15px 0;
+h1, h2 {
+    color: #0056b3;
+}
+
+section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.location-group, .time-group, .save-location-form {
+    margin-bottom: 10px;
 }
 
 label {
-    display: inline-block;
-    width: 120px;
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
 }
 
-select, input[type="datetime-local"] {
-    width: 250px;
-    padding: 5px;
+input[type="text"],
+input[type="time"],
+select {
+    width: calc(100% - 12px);
+    padding: 8px;
+    margin-bottom: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
 }
 
 button {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
     padding: 8px 15px;
+    border: none;
     border-radius: 4px;
+    background-color: #007bff;
+    color: white;
     cursor: pointer;
-    margin-left: 10px;
 }
 
 button:hover {
-    background-color: #45a049;
+    background-color: #0056b3;
 }
 
-.main-button {
-    width: 100%;
-    padding: 12px;
-    font-size: 16px;
-    margin: 20px 0;
-}
-
-.time-display {
-    font-size: 48px;
+#time-difference-display p {
+    font-size: 2em;
+    font-weight: bold;
     text-align: center;
-    margin: 30px 0;
-    font-family: monospace;
 }
 
-.red { color: #ff0000; }
-.green { color: #00cc00; }
-.blue { color: #0000ff; }
-
-.save-location {
-    margin-top: 30px;
-    border-top: 1px solid #ccc;
-    padding-top: 20px;
+.time-red {
+    color: red;
 }
 
-#locationName {
-    width: 200px;
+.time-green {
+    color: green;
+}
+
+.time-blue {
+    color: blue;
+}
+
+#saved-locations-list li {
+    margin-bottom: 5px;
     padding: 5px;
-}
-
-.saved-locations ul {
-    list-style-type: none;
-    padding: 0;
-}
-
-.saved-locations li {
-    margin: 5px 0;
-    padding: 5px;
-    background-color: #f8f8f8;
-    border-radius: 4px;
+    border-bottom: 1px dashed #eee;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.copyright {
+#saved-locations-list li:last-child {
+    border-bottom: none;
+}
+
+#saved-locations-list button {
+    background-color: #dc3545; /* Red color for delete button */
+}
+
+#saved-locations-list button:hover {
+    background-color: #c82333;
+}
+
+footer {
     text-align: center;
     margin-top: 30px;
-    color: #666;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+    color: #777;
     font-size: 0.9em;
 }
