@@ -198,3 +198,66 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+
+@media (max-width: 480px) {
+    .container {
+        padding: 15px;
+        border-radius: 0;
+    }
+    
+    .input-section {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .geo-input {
+        grid-template-columns: 1fr;
+    }
+    
+    .preset-selector {
+        flex-direction: column;
+    }
+    
+    .preset-selector button {
+        width: 100%;
+    }
+    
+    .time-input {
+        grid-template-columns: 1fr;
+    }
+    
+    .status-card {
+        font-size: 1.2em;
+        padding: 15px;
+    }
+    
+    .modal-content {
+        width: 90%;
+        padding: 20px;
+    }
+}
+
+.gps-status {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ff4757;
+}
+
+.status-dot.active {
+    background: #2ed573;
+}
