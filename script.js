@@ -1,82 +1,169 @@
-let predefinedLocations = {};
-let routeActive = false;
+let savedLocations = JSON.parse(localStorage.getItem('locations')) || [];
+let navigationInterval = null;
+let currentPosition = null;
+let routeStarted = false;
 
-document.getElementById("save-start").addEventListener("click", () => saveLocation("start"));
-document.getElementById("save-end").addEventListener("click", () => saveLocation("end"));
-document.getElementById("start-route").addEventListener("click", startRoute);
-
-navigator.geolocation.watchPosition(updateLocation, handleLocationError);
+// Inicializar selects de ubicaciones
+updateLocationSelects();
 
 function saveLocation(type) {
-  const name = prompt(`Nombre para la ubicación (${type === "start" ? "Inicio" : "Destino"}):`);
-  if (!name) return alert("Debe asignar un nombre válido.");
-  
-  navigator.geolocation.getCurrentPosition((position) => {
-    const { latitude, longitude } = position.coords;
-    predefinedLocations[name] = { latitude, longitude };
-    updateLocationList(type, name);
-  }, handleLocationError);
+    const name = prompt('Nombre de la ubicación:');
+    if (!name) return;
+    
+    const select = type === 'start' ? document.getElementById('startPoint') : document.getElementById('endPoint');
+    const position = currentPosition || { coords: { latitude: 0, longitude: 0 } };
+    
+    const newLocation = {
+        name,
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+    };
+    
+    savedLocations.push(newLocation);
+    localStorage.setItem('locations', JSON.stringify(savedLocations));
+    updateLocationSelects();
 }
 
-function updateLocationList(type, name) {
-  const selectElement = type === "start" ? document.getElementById("start-location") : document.getElementById("end-location");
-  const option = document.createElement("option");
-  option.value = name;
-  option.textContent = name;
-  selectElement.appendChild(option);
+function deleteLocation(index) {
+    savedLocations.splice(index, 1);
+    localStorage.setItem('locations', JSON.stringify(savedLocations));
+    updateLocationSelects();
 }
 
-function startRoute() {
-  if (routeActive) return alert("Ruta ya en progreso.");
-  
-  const startTime = document.getElementById("start-time").value;
-  const endTime = document.getElementById("end-time").value;
-  if (!startTime || !endTime) return alert("Por favor, configure horarios válidos.");
-
-  routeActive = true;
-  setInterval(updateRouteStatus, 5000);
+function updateLocationSelects() {
+    const startSelect = document.getElementById('startPoint');
+    const endSelect = document.getElementById('endPoint');
+    const locationList = document.getElementById('locationList');
+    
+    // Limpiar selects
+    startSelect.innerHTML = '<option value="current">Ubicación actual</option>';
+    endSelect.innerHTML = '';
+    locationList.innerHTML = '';
+    
+    // Llenar selects y lista
+    savedLocations.forEach((loc, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = loc.name;
+        
+        startSelect.appendChild(option.cloneNode(true));
+        endSelect.appendChild(option);
+        
+        // Agregar a la lista
+        const li = document.createElement('li');
+        li.innerHTML = `
+            ${loc.name} 
+            <button onclick="deleteLocation(${index})">Eliminar</button>
+        `;
+        locationList.appendChild(li);
+    });
 }
 
-function updateLocation(position) {
-  const { latitude, longitude } = position.coords;
-  console.log("Ubicación actual:", latitude, longitude);
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Radio de la Tierra en metros
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atn2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
 }
 
-function updateRouteStatus() {
-  const now = new Date();
-  const startTime = parseTime(document.getElementById("start-time").value);
-  const endTime = parseTime(document.getElementById("end-time").value);
-  const statusElement = document.getElementById("time-difference");
-
-  if (now < startTime) {
-    const diff = calculateTimeDifference(now, startTime);
-    statusElement.textContent = `Tiempo restante: +${formatTime(diff)}`;
-    statusElement.className = "blue";
-  } else {
-    const diff = calculateTimeDifference(now, endTime);
-    const delay = now > endTime;
-    statusElement.textContent = `${delay ? "-" : "+"}${formatTime(diff)}`;
-    statusElement.className = delay ? "red" : "green";
-  }
+function calculateTimeDifference() {
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    const startSelect = document.getElementById('startPoint');
+    const endSelect = document.getElementById('endPoint');
+    
+    if (!startTime || !endTime) return;
+    
+    const now = new Date();
+    const totalTripTime = (new Date(`1970-01-01T${endTime}`) - new Date(`1970-01-01T${startTime}`)) / 1000;
+    
+    let startPoint;
+    if (startSelect.value === 'current') {
+        startPoint = currentPosition.coords;
+    } else {
+        const loc = savedLocations[startSelect.value];
+        startPoint = { latitude: loc.lat, longitude: loc.lng };
+    }
+    
+    const endLoc = savedLocations[endSelect.value];
+    const totalDistance = calculateDistance(
+        startPoint.latitude, startPoint.longitude,
+        endLoc.lat, endLoc.lng
+    );
+    
+    const currentDistance = calculateDistance(
+        currentPosition.coords.latitude, currentPosition.coords.longitude,
+        startPoint.latitude, startPoint.longitude
+    );
+    
+    // Verificar si el viaje ha comenzado
+    if (!routeStarted) {
+        if (currentDistance > 50) {
+            routeStarted = true;
+        } else {
+            const timeToStart = (new Date(`1970-01-01T${startTime}`) - now) / 1000;
+            return { diff: timeToStart, started: false };
+        }
+    }
+    
+    const elapsedTime = (now - new Date(`1970-01-01T${startTime}`)) / 1000;
+    const expectedProgress = elapsedTime / totalTripTime;
+    const expectedDistance = totalDistance * expectedProgress;
+    const actualDistance = calculateDistance(
+        currentPosition.coords.latitude, currentPosition.coords.longitude,
+        startPoint.latitude, startPoint.longitude
+    );
+    
+    const timeDifference = (actualDistance - expectedDistance) / (totalDistance / totalTripTime);
+    return { diff: timeDifference, started: true };
 }
 
-function calculateTimeDifference(start, end) {
-  return Math.abs((end - start) / 1000);
+function updateDisplay() {
+    const result = calculateTimeDifference();
+    if (!result) return;
+    
+    const timeDiff = Math.abs(result.diff);
+    const minutes = Math.floor(timeDiff / 60);
+    const seconds = Math.floor(timeDiff % 60);
+    
+    let timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    let colorClass = 'green';
+    
+    if (result.started) {
+        if (result.diff < -120) colorClass = 'red';
+        else if (result.diff > 120) colorClass = 'blue';
+        timeString = (result.diff < 0 ? '-' : '+') + timeString;
+    } else {
+        timeString = '+' + timeString;
+        colorClass = result.diff <= 0 ? 'red' : 'green';
+    }
+    
+    const display = document.getElementById('timeDisplay');
+    display.textContent = timeString;
+    display.className = colorClass;
 }
 
-function formatTime(seconds) {
-  const minutes = Math.floor(seconds / 60);
-  const remainder = seconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+function startNavigation() {
+    if (navigationInterval) clearInterval(navigationInterval);
+    routeStarted = false;
+    
+    navigator.geolocation.watchPosition(position => {
+        currentPosition = position;
+    }, console.error, { enableHighAccuracy: true });
+    
+    navigationInterval = setInterval(updateDisplay, 5000);
+    updateDisplay();
 }
 
-function parseTime(timeString) {
-  const [hours, minutes] = timeString.split(":").map(Number);
-  const now = new Date();
-  now.setHours(hours, minutes, 0, 0);
-  return now;
-}
-
-function handleLocationError(error) {
-  console.error("Error obteniendo ubicación:", error.message);
-}
+// Solicitar geolocalización al cargar
+navigator.geolocation.getCurrentPosition(position => {
+    currentPosition = position;
+}, console.error);
