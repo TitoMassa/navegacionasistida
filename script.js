@@ -161,3 +161,125 @@ document.getElementById('useCurrentLocation').addEventListener('change', functio
 });
 
 // Mantener las funciones calculateDistance, formatTimeDiff y startNavigation del código anterior
+
+// Corregir y mejorar la gestión de ubicaciones guardadas
+function loadPresets() {
+    const select = document.getElementById('presets');
+    select.innerHTML = '<option value="">Ubicaciones guardadas</option>';
+    presets = JSON.parse(localStorage.getItem('presets')) || [];
+    
+    // Ordenar alfabéticamente
+    presets.sort((a, b) => a.name.localeCompare(b.name));
+    
+    presets.forEach(preset => {
+        const option = document.createElement('option');
+        option.value = preset.name;
+        option.dataset.type = preset.type;
+        option.textContent = `${preset.name} (${preset.type === 'start' ? '🏁 Inicio' : '🎯 Destino'})`;
+        select.appendChild(option);
+    });
+}
+
+function loadPreset(presetName) {
+    const preset = presets.find(p => p.name === presetName);
+    if (!preset) return;
+    
+    const target = preset.type === 'start' ? 'start' : 'end';
+    document.getElementById(`${target}Lat`).value = preset.lat.toFixed(6);
+    document.getElementById(`${target}Lon`).value = preset.lon.toFixed(6);
+}
+
+// Mejorar el guardado de presets
+function savePreset() {
+    const nameInput = document.getElementById('presetName');
+    const name = nameInput.value.trim();
+    const type = document.querySelector('input[name="presetType"]:checked').value;
+    
+    const coords = type === 'start' ? {
+        lat: document.getElementById('startLat').value,
+        lon: document.getElementById('startLon').value
+    } : {
+        lat: document.getElementById('endLat').value,
+        lon: document.getElementById('endLon').value
+    };
+    
+    if (!name || !coords.lat || !coords.lon) {
+        alert('Por favor complete todos los campos');
+        return;
+    }
+    
+    // Validar coordenadas
+    if (isNaN(coords.lat) || isNaN(coords.lon)) {
+        alert('Coordenadas inválidas');
+        return;
+    }
+    
+    // Actualizar o crear preset
+    const existingIndex = presets.findIndex(p => p.name === name);
+    if (existingIndex > -1) {
+        presets[existingIndex] = { 
+            name, 
+            type,
+            lat: parseFloat(coords.lat),
+            lon: parseFloat(coords.lon)
+        };
+    } else {
+        presets.push({
+            name,
+            type,
+            lat: parseFloat(coords.lat),
+            lon: parseFloat(coords.lon)
+        });
+    }
+    
+    localStorage.setItem('presets', JSON.stringify(presets));
+    loadPresets();
+    nameInput.value = '';
+    closeModal();
+}
+
+// Mejorar seguimiento GPS
+let lastPosition = null;
+
+function updateGPSStatus(active = false) {
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.gps-status span');
+    
+    statusDot.classList.toggle('active', active);
+    statusText.textContent = `GPS: ${active ? 'Activo' : 'Inactivo'}`;
+}
+
+function startNavigation() {
+    // Validaciones anteriores...
+    
+    if (!navigator.geolocation) {
+        alert('La geolocalización no está disponible en tu dispositivo');
+        return;
+    }
+    
+    updateGPSStatus(true);
+    
+    watchId = navigator.geolocation.watchPosition(position => {
+        lastPosition = position;
+        // Cálculos actualizados...
+        
+        // Actualizar coordenadas actuales si está activo el checkbox
+        if (document.getElementById('useCurrentLocation').checked) {
+            document.getElementById('startLat').value = position.coords.latitude.toFixed(6);
+            document.getElementById('startLon').value = position.coords.longitude.toFixed(6);
+        }
+    }, error => {
+        console.error('Error GPS:', error);
+        updateGPSStatus(false);
+        document.getElementById('result').textContent = 'Error de geolocalización';
+    }, {
+        enableHighAccuracy: true,
+        maximumAge: 30000,
+        timeout: 27000
+    });
+    
+    // Detener seguimiento al salir de la página
+    window.addEventListener('beforeunload', () => {
+        if (watchId) navigator.geolocation.clearWatch(watchId);
+    });
+}
