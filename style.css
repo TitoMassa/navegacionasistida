@@ -1,61 +1,79 @@
 body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  background-color: #f9f9f9;
-  color: #333;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f0f0;
 }
 
-header {
-  background-color: #4CAF50;
-  color: white;
-  padding: 1rem;
-  text-align: center;
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-main {
-  padding: 1rem;
+h1 {
+    color: #333;
+    text-align: center;
 }
 
-section {
-  margin-bottom: 2rem;
+.controls {
+    margin-bottom: 20px;
 }
 
-label {
-  display: block;
-  margin-bottom: 0.5rem;
+.input-group {
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-input, select, button {
-  margin-bottom: 1rem;
-  padding: 0.5rem;
-  width: 100%;
+button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
 }
 
-#time-difference {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-top: 1rem;
+button:hover {
+    background: #45a049;
 }
 
-#time-difference.red {
-  color: red;
+#timeDisplay {
+    font-size: 48px;
+    text-align: center;
+    margin: 20px 0;
+    font-weight: bold;
+    font-family: monospace;
 }
 
-#time-difference.green {
-  color: green;
+.saved-locations {
+    margin-top: 30px;
 }
 
-#time-difference.blue {
-  color: blue;
+#locationList {
+    list-style: none;
+    padding: 0;
+}
+
+#locationList li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
 }
 
 footer {
-  background-color: #333;
-  color: white;
-  text-align: center;
-  padding: 1rem 0;
-  position: fixed;
-  width: 100%;
-  bottom: 0;
+    text-align: center;
+    margin-top: 30px;
+    color: #666;
 }
+
+.red { color: #ff0000; }
+.green { color: #00aa00; }
+.blue { color: #0000ff; }
