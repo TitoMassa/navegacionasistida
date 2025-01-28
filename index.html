@@ -1,66 +1,71 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navegación Asistida</title>
+    <title>Navegación Asistida v0.4</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🛠️ Navegación Asistida</h1>
-            <div class="preset-section">
-                <select id="presets" onchange="loadPreset(this.value)">
-                    <option value="">Ubicaciones guardadas</option>
-                </select>
-                <div class="save-preset">
-                    <input type="text" id="saveName" placeholder="Nombre ubicación">
-                    <button onclick="saveCurrentLocation()">💾</button>
-                </div>
+    <div class="contenedor">
+        <h1>Navegación Asistida v0.4</h1>
+        
+        <form id="formulario">
+            <div class="grupo-formulario">
+                <label><input type="checkbox" id="ubicacion-actual"> Usar ubicación actual como inicio</label>
             </div>
-        </header>
 
-        <main>
-            <div class="input-grid">
-                <div class="input-group">
-                    <label>📍 Inicio</label>
-                    <div class="geo-input">
-                        <input type="number" id="startLat" step="any" placeholder="Lat">
-                        <input type="number" id="startLon" step="any" placeholder="Lon">
-                        <label class="checkbox">
-                            <input type="checkbox" id="useCurrentLocation"> Actual
-                        </label>
-                    </div>
-                </div>
+            <div class="grupo-formulario" id="grupo-inicio">
+                <label>Coordenadas de inicio:</label>
+                <input type="number" step="any" id="start-lat" placeholder="Latitud" disabled>
+                <input type="number" step="any" id="start-lon" placeholder="Longitud" disabled>
+            </div>
 
-                <div class="input-group">
-                    <label>🎯 Destino</label>
-                    <div class="geo-input">
-                        <input type="number" id="endLat" step="any" placeholder="Lat">
-                        <input type="number" id="endLon" step="any" placeholder="Lon">
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label>⏰ Inicio</label>
-                    <input type="datetime-local" id="startTime">
-                </div>
-
-                <div class="input-group">
-                    <label>⏳ Llegada</label>
-                    <input type="datetime-local" id="arrivalTime">
+            <div class="grupo-formulario">
+                <label>Ubicaciones predefinidas:</label>
+                <div class="grupo-botones">
+                    <select id="ubicaciones-predefinidas">
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                    <button type="button" id="btn-guardar-ubicacion" class="btn-secundario">Guardar Nueva</button>
+                    <button type="button" id="btn-eliminar" class="btn-eliminar">Eliminar</button>
                 </div>
             </div>
 
-            <button class="primary-btn" onclick="startNavigation()">INICIAR NAVEGACIÓN</button>
-            
-            <div class="time-display" id="result"></div>
-        </main>
+            <div class="grupo-formulario guardar-ubicacion">
+                <label>Guardar nueva ubicación:</label>
+                <input type="text" id="nombre-ubicacion" placeholder="Nombre de la ubicación">
+                <input type="number" step="any" id="new-lat" placeholder="Latitud">
+                <input type="number" step="any" id="new-lon" placeholder="Longitud">
+                <button type="button" id="btn-confirmar-guardar" class="btn-confirmar">Confirmar Guardado</button>
+            </div>
 
+            <div class="grupo-formulario">
+                <label>Coordenadas de destino:</label>
+                <input type="number" step="any" id="dest-lat" placeholder="Latitud">
+                <input type="number" step="any" id="dest-lon" placeholder="Longitud">
+            </div>
+
+            <div class="grupo-formulario">
+                <label>Hora de inicio:</label>
+                <input type="datetime-local" id="start-time" required>
+            </div>
+
+            <div class="grupo-formulario">
+                <label>Hora de llegada programada:</label>
+                <input type="datetime-local" id="arrival-time" required>
+            </div>
+
+            <div class="grupo-botones">
+                <button type="submit">Iniciar navegación</button>
+                <button type="button" id="btn-detener" class="btn-detener">Detener Navegación</button>
+            </div>
+        </form>
+
+        <div id="resultado" class="resultado"></div>
+        
         <footer>
-            <p>© 2025 Tito Massa</p>
+            <p>© 2025 Tito Massa - Todos los derechos reservados</p>
         </footer>
     </div>
 
