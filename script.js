@@ -87,3 +87,77 @@ function startNavigation() {
         resultDiv.style.color = timeDiff >= 0 ? '#4CAF50' : '#f44336';
     }, null, {enableHighAccuracy: true});
 }
+
+// script.js
+let watchId = null;
+let presets = JSON.parse(localStorage.getItem('presets')) || [];
+
+// Cargar presets al iniciar
+function loadPresets() {
+    const select = document.getElementById('presets');
+    select.innerHTML = '<option value="">Ubicaciones guardadas</option>';
+    presets.forEach(preset => {
+        const option = document.createElement('option');
+        option.value = preset.name;
+        option.textContent = `${preset.name} (${preset.type === 'start' ? 'Inicio' : 'Destino'})`;
+        select.appendChild(option);
+    });
+}
+
+function loadPreset(presetName) {
+    const preset = presets.find(p => p.name === presetName);
+    if (!preset) return;
+    
+    if (preset.type === 'start') {
+        document.getElementById('startLat').value = preset.lat;
+        document.getElementById('startLon').value = preset.lon;
+    } else {
+        document.getElementById('endLat').value = preset.lat;
+        document.getElementById('endLon').value = preset.lon;
+    }
+}
+
+function showSavePresetModal() {
+    document.getElementById('presetModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('presetModal').style.display = 'none';
+}
+
+function savePreset() {
+    const name = document.getElementById('presetName').value;
+    const type = document.querySelector('input[name="presetType"]:checked').value;
+    const lat = type === 'start' ? document.getElementById('startLat').value : document.getElementById('endLat').value;
+    const lon = type === 'start' ? document.getElementById('startLon').value : document.getElementById('endLon').value;
+    
+    if (!name || !lat || !lon) {
+        alert('Complete todos los campos');
+        return;
+    }
+    
+    // Eliminar preset existente con mismo nombre
+    presets = presets.filter(p => p.name !== name);
+    
+    presets.push({
+        name,
+        type,
+        lat: parseFloat(lat),
+        lon: parseFloat(lon)
+    });
+    
+    localStorage.setItem('presets', JSON.stringify(presets));
+    loadPresets();
+    closeModal();
+}
+
+// Resto del código anterior (geolocalización, cálculos) se mantiene igual...
+// ... (Agregar aquí las funciones del código anterior que no se muestran por brevedad)
+
+// Inicializar al cargar
+document.addEventListener('DOMContentLoaded', loadPresets);
+document.getElementById('useCurrentLocation').addEventListener('change', function(e) {
+    // Misma función que antes...
+});
+
+// Mantener las funciones calculateDistance, formatTimeDiff y startNavigation del código anterior
