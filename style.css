@@ -30,7 +30,6 @@ label {
 }
 
 select, input, button {
-    width: 100%;
     padding: 8px;
     margin: 4px 0;
     border: 1px solid #ddd;
@@ -46,27 +45,63 @@ input[type="text"] {
 }
 
 button {
-    background-color: #4CAF50;
     color: white;
     padding: 10px 20px;
     border: none;
     cursor: pointer;
     font-size: 16px;
-    margin-top: 5px;
+    transition: background-color 0.3s;
 }
 
-button:hover {
+.grupo-botones {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+/* Botón principal */
+button[type="submit"] {
+    background-color: #4CAF50;
+}
+
+button[type="submit"]:hover {
     background-color: #45a049;
 }
 
-#btn-guardar-ubicacion {
-    background-color: #2196F3;
-    width: auto;
-    float: right;
+/* Botón detener */
+.btn-detener {
+    background-color: #ff4444;
 }
 
-#btn-guardar-ubicacion:hover {
+.btn-detener:hover {
+    background-color: #cc0000;
+}
+
+/* Botón eliminar */
+.btn-eliminar {
+    background-color: #ff9800;
+}
+
+.btn-eliminar:hover {
+    background-color: #f57c00;
+}
+
+/* Botón confirmar */
+.btn-confirmar {
+    background-color: #2196F3;
+}
+
+.btn-confirmar:hover {
     background-color: #1976D2;
+}
+
+/* Botón secundario */
+.btn-secundario {
+    background-color: #9E9E9E;
+}
+
+.btn-secundario:hover {
+    background-color: #757575;
 }
 
 .resultado {
@@ -99,10 +134,21 @@ button:hover {
     background: #f5f5f5;
     padding: 10px;
     border-radius: 4px;
+    margin-top: 10px;
+}
+
+.guardar-ubicacion input {
+    width: 100% !important;
+    margin: 5px 0 !important;
 }
 
 footer {
     text-align: center;
     margin-top: 20px;
     color: #666;
+}
+
+select {
+    flex-grow: 1;
+    margin-right: 5px;
 }
