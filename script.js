@@ -1,196 +1,387 @@
-let watchId = null;
-let currentPosition = null;
-let startPos = null;
-let destPos = null;
-let startTime = null;
-let arrivalTime = null;
-let totalDistance = 0;
+/* script.js */
+document.addEventListener('DOMContentLoaded', () => {
+    const startTimeInputStartLocation = document.getElementById('get-current-location-start');
+    const startLocationSelect = document.getElementById('start-location');
+    const startLocationManualInput = document.getElementById('start-location-manual');
+    const destinationLocationSelect = document.getElementById('destination-location');
+    const destinationLocationManualInput = document.getElementById('destination-location-manual');
+    const arrivalTimeInput = document.getElementById('arrival-time');
+    const timeStatusDisplay = document.getElementById('time-status');
+    const savedLocationsList = document.getElementById('saved-locations-list');
+    const saveLocationButton = document.getElementById('save-location-button');
+    const saveLocationNameInput = document.getElementById('save-location-name');
 
-// Cargar ubicaciones guardadas al iniciar
-let savedLocations = JSON.parse(localStorage.getItem('locations')) || [];
-updateLocationSelects();
+    let currentLocation = null;
+    let startLocationCoords = null;
+    let destinationLocationCoords = null;
+    let scheduledArrivalTime = null;
+    let watchId = null;
+    let savedLocations = loadLocations();
+    let initialStartTime = null;
+    let startDistanceCheckActive = false;
 
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Radio de la Tierra en metros
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
+    // Initialize saved locations dropdowns and list
+    populateSavedLocationsDropdowns();
+    renderSavedLocationsList();
 
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-    return R * c;
-}
-
-function formatTimeDifference(ms) {
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(Math.abs(totalSeconds) / 60);
-    const seconds = Math.abs(totalSeconds) % 60;
-    const sign = totalSeconds >= 0 ? '+' : '-';
-    
-    return `${sign}${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
-
-function updateDisplay(difference) {
-    const statusElement = document.getElementById('status');
-    statusElement.textContent = formatTimeDifference(difference);
-    
-    const diffSeconds = Math.floor(difference / 1000);
-    statusElement.className = 'time-display ';
-    
-    if (diffSeconds <= -120) {
-        statusElement.classList.add('red');
-    } else if (diffSeconds >= 120) {
-        statusElement.classList.add('blue');
-    } else {
-        statusElement.classList.add('green');
-    }
-}
-
-function updateNavigation() {
-    if (!currentPosition || !startPos || !destPos) return;
-
-    const now = Date.now();
-    const currentLat = currentPosition.coords.latitude;
-    const currentLon = currentPosition.coords.longitude;
-    
-    // Calcular distancia al destino
-    const remainingDistance = calculateDistance(
-        currentLat, currentLon,
-        destPos.lat, destPos.lon
-    );
-
-    // Verificar si el viaje ha comenzado
-    const distanceFromStart = calculateDistance(
-        currentLat, currentLon,
-        startPos.lat, startPos.lon
-    );
-
-    const tripStarted = distanceFromStart > 50 || now >= startTime;
-
-    if (!tripStarted && now < startTime) {
-        const timeRemaining = startTime - now;
-        updateDisplay(-timeRemaining);
-        return;
+    // --- Location functions ---
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    };
+                    console.log('Ubicación actual obtenida:', currentLocation);
+                    if (!startLocationCoords && startLocationSelect.value === 'current') {
+                        setStartLocationToCurrent();
+                    }
+                },
+                (error) => {
+                    console.error('Error al obtener la ubicación:', error.message);
+                    timeStatusDisplay.textContent = 'Error al obtener la ubicación. Asegúrate de activar el GPS.';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            timeStatusDisplay.textContent = 'Geolocalización no soportada por este navegador.';
+        }
     }
 
-    const totalTime = arrivalTime - startTime;
-    const timeNeeded = (remainingDistance / totalDistance) * totalTime;
-    const remainingTime = arrivalTime - now;
-    const difference = timeNeeded - remainingTime;
-
-    updateDisplay(difference);
-}
-
-function startNavigation() {
-    const startSelect = document.getElementById('startSelect');
-    const destSelect = document.getElementById('destSelect');
-    
-    startPos = JSON.parse(startSelect.value);
-    destPos = JSON.parse(destSelect.value);
-    
-    startTime = new Date(document.getElementById('startTime').value).getTime();
-    arrivalTime = new Date(document.getElementById('arrivalTime').value).getTime();
-
-    if (!startPos || !destPos || !startTime || !arrivalTime) {
-        alert('Por favor complete todos los campos');
-        return;
+    function watchLocation() {
+        if (navigator.geolocation) {
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    currentLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    };
+                    console.log('Ubicación actual actualizada:', currentLocation);
+                    updateTimeDifference();
+                    if (startDistanceCheckActive) {
+                        checkStartDistance();
+                    }
+                },
+                (error) => {
+                    console.error('Error al observar la ubicación:', error.message);
+                    timeStatusDisplay.textContent = 'Error al observar la ubicación.';
+                    clearInterval(intervalId); // Stop updates if watch fails
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            timeStatusDisplay.textContent = 'Geolocalización no soportada por este navegador.';
+        }
     }
 
-    totalDistance = calculateDistance(
-        startPos.lat, startPos.lon,
-        destPos.lat, destPos.lon
-    );
-
-    if (watchId) navigator.geolocation.clearWatch(watchId);
-    
-    watchId = navigator.geolocation.watchPosition(
-        position => {
-            currentPosition = position;
-            updateNavigation();
-        },
-        error => console.error(error),
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-    );
-
-    setInterval(updateNavigation, 5000);
-}
-
-function saveLocation() {
-    const name = document.getElementById('locationName').value.trim();
-    if (!name || !currentPosition) {
-        alert('Ingrese un nombre y asegúrese de tener ubicación');
-        return;
+    function clearWatchLocation() {
+        if (watchId) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+            console.log('Observación de ubicación detenida.');
+        }
     }
 
-    const newLocation = {
-        name: name,
-        lat: currentPosition.coords.latitude,
-        lon: currentPosition.coords.longitude
-    };
+    function setStartLocationToCurrent() {
+        if (currentLocation) {
+            startLocationCoords = currentLocation;
+            startLocationManualInput.value = `${currentLocation.latitude}, ${currentLocation.longitude}`;
+            startLocationManualInput.style.display = 'inline-block';
+            startLocationSelect.value = 'manual';
+            console.log('Ubicación de inicio establecida a ubicación actual:', startLocationCoords);
+            if (!initialStartTime) {
+                initialStartTime = new Date(); // Capture initial start time
+                startDistanceCheckActive = true;
+                checkStartDistance(); // Initial check
+            }
+        } else {
+            timeStatusDisplay.textContent = 'Obteniendo ubicación actual...';
+            getLocation(); // Try to get location again
+        }
+    }
 
-    savedLocations.push(newLocation);
-    localStorage.setItem('locations', JSON.stringify(savedLocations));
-    updateLocationSelects();
-    document.getElementById('locationName').value = '';
-    updateLocationsList();
-}
+    function checkStartDistance() {
+        if (!startLocationCoords || !currentLocation || !initialStartTime || !scheduledArrivalTime) return;
 
-function deleteLocation(index) {
-    savedLocations.splice(index, 1);
-    localStorage.setItem('locations', JSON.stringify(savedLocations));
-    updateLocationSelects();
-    updateLocationsList();
-}
+        const distance = calculateDistance(startLocationCoords.latitude, startLocationCoords.longitude, currentLocation.latitude, currentLocation.longitude);
 
-function useCurrentLocation(type) {
-    navigator.geolocation.getCurrentPosition(position => {
-        currentPosition = position;
-        const selectElement = document.getElementById(`${type}Select`);
-        selectElement.value = JSON.stringify({
-            lat: position.coords.latitude,
-            lon: position.coords.longitude
+        if (distance > 50) {
+            console.log("Usuario se ha movido 50m, iniciando ruta.");
+            startDistanceCheckActive = false; // Stop distance checking
+            updateTimeDifference(); // Start time difference updates
+        } else {
+            const now = new Date();
+            if (now < initialStartTime) {
+                const timeLeft = initialStartTime.getTime() - now.getTime();
+                const formattedTimeLeft = formatTimeDifference(timeLeft);
+                timeStatusDisplay.textContent = `Tiempo para inicio: +${formattedTimeLeft}`;
+                timeStatusDisplay.className = 'time-green'; // Default green for time to start
+            } else {
+                startDistanceCheckActive = false; // Start time passed, start route even if not moved
+                updateTimeDifference(); // Start time difference updates
+            }
+        }
+    }
+
+    function getCoordinatesFromInput(inputElement) {
+        const value = inputElement.value.trim();
+        if (!value) return null;
+
+        const parts = value.split(',').map(p => p.trim());
+        if (parts.length !== 2) {
+            alert('Formato de coordenadas inválido. Use Latitud, Longitud.');
+            return null;
+        }
+
+        const latitude = parseFloat(parts[0]);
+        const longitude = parseFloat(parts[1]);
+
+        if (isNaN(latitude) || isNaN(longitude)) {
+            alert('Latitud y Longitud deben ser números válidos.');
+            return null;
+        }
+
+        return { latitude, longitude };
+    }
+
+    // --- Time Difference Calculation ---
+    function updateTimeDifference() {
+        if (!currentLocation || !scheduledArrivalTime) {
+            timeStatusDisplay.textContent = 'Esperando datos de ubicación y hora de llegada...';
+            return;
+        }
+
+        const now = new Date();
+        if (now < initialStartTime && startDistanceCheckActive) {
+            checkStartDistance(); // Continue showing time to start if before start time and not moved
+            return;
+        }
+
+        const arrivalTime = new Date(now);
+        const [hours, minutes] = arrivalTimeInput.value.split(':').map(Number);
+        arrivalTime.setHours(hours, minutes, 0, 0);
+
+        if (now > arrivalTime) {
+            scheduledArrivalTime = arrivalTime; // If current time is past arrival time, use current time as base for past due.
+        } else {
+            scheduledArrivalTime = arrivalTime;
+        }
+
+
+        const timeDiffMs = scheduledArrivalTime.getTime() - now.getTime();
+        const formattedTimeDiff = formatTimeDifference(timeDiffMs);
+
+        if (timeDiffMs >= 120000) { // >= 2 minutes ahead
+            timeStatusDisplay.textContent = `+${formattedTimeDiff}`;
+            timeStatusDisplay.className = 'time-blue';
+        } else if (timeDiffMs <= -120000) { // <= 2 minutes behind
+            timeStatusDisplay.textContent = `-${formattedTimeDiff}`;
+            timeStatusDisplay.className = 'time-red';
+        } else { // Within +/- 2 minutes
+            const sign = timeDiffMs >= 0 ? '+' : '-';
+            timeStatusDisplay.textContent = `${sign}${formattedTimeDiff}`;
+            timeStatusDisplay.className = 'time-green';
+        }
+    }
+
+    function formatTimeDifference(timeDiffMs) {
+        const totalSeconds = Math.abs(Math.floor(timeDiffMs / 1000));
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        const mm = String(minutes).padStart(2, '0');
+        const ss = String(seconds).padStart(2, '0');
+        return `${mm}:${ss}`;
+    }
+
+    // --- Saved Locations ---
+    function saveLocation() {
+        if (!currentLocation) {
+            alert('Ubicación actual no disponible. Esperando ubicación GPS.');
+            return;
+        }
+        const locationName = saveLocationNameInput.value.trim();
+        if (!locationName) {
+            alert('Por favor, ingresa un nombre para la ubicación.');
+            return;
+        }
+
+        const newLocation = {
+            name: locationName,
+            coords: currentLocation
+        };
+        savedLocations.push(newLocation);
+        localStorage.setItem('savedLocations', JSON.stringify(savedLocations));
+        saveLocationNameInput.value = '';
+        renderSavedLocationsList();
+        populateSavedLocationsDropdowns();
+        alert(`Ubicación "${locationName}" guardada.`);
+    }
+
+    function deleteLocation(index) {
+        savedLocations.splice(index, 1);
+        localStorage.setItem('savedLocations', JSON.stringify(savedLocations));
+        renderSavedLocationsList();
+        populateSavedLocationsDropdowns();
+        alert('Ubicación eliminada.');
+    }
+
+    function loadLocations() {
+        const storedLocations = localStorage.getItem('savedLocations');
+        return storedLocations ? JSON.parse(storedLocations) : [];
+    }
+
+    function renderSavedLocationsList() {
+        savedLocationsList.innerHTML = '';
+        if (savedLocations.length === 0) {
+            savedLocationsList.innerHTML = '<li>No hay ubicaciones guardadas.</li>';
+            return;
+        }
+        savedLocations.forEach((location, index) => {
+            const li = document.createElement('li');
+            li.textContent = `${location.name} (${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)})`;
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Eliminar';
+            deleteButton.addEventListener('click', () => deleteLocation(index));
+            li.appendChild(deleteButton);
+            savedLocationsList.appendChild(li);
         });
-    });
-}
+    }
 
-function updateLocationSelects() {
-    const startSelect = document.getElementById('startSelect');
-    const destSelect = document.getElementById('destSelect');
-    
-    const updateSelect = (select) => {
-        select.innerHTML = '<option value="">Seleccionar ubicación</option>';
+    function populateSavedLocationsDropdowns() {
+        // Clear existing options, keep "Seleccionar ubicación guardada" in destination
+        startLocationSelect.innerHTML = '<option value="current">Mi ubicación actual</option>';
+        destinationLocationSelect.innerHTML = '<option value="">Seleccionar ubicación guardada</option>';
+
         savedLocations.forEach(location => {
-            const option = document.createElement('option');
-            option.value = JSON.stringify(location);
-            option.textContent = location.name;
-            select.appendChild(option);
+            const optionStart = document.createElement('option');
+            optionStart.value = JSON.stringify(location.coords); // Store coords as string
+            optionStart.textContent = location.name;
+            startLocationSelect.appendChild(optionStart);
+
+            const optionDest = document.createElement('option');
+            optionDest.value = JSON.stringify(location.coords); // Store coords as string
+            optionDest.textContent = location.name;
+            destinationLocationSelect.appendChild(optionDest);
         });
-    };
+    }
 
-    updateSelect(startSelect);
-    updateSelect(destSelect);
-}
+    // --- Distance Calculation (Haversine formula for accuracy) ---
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // metres
+        const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+        const φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180;
+        const Δλ = (lon2-lon1) * Math.PI/180;
 
-function updateLocationsList() {
-    const list = document.getElementById('locationsList');
-    list.innerHTML = '';
-    
-    savedLocations.forEach((location, index) => {
-        const li = document.createElement('li');
-        li.textContent = location.name;
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Eliminar';
-        deleteBtn.onclick = () => deleteLocation(index);
-        
-        li.appendChild(deleteBtn);
-        list.appendChild(li);
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                  Math.cos(φ1) * Math.cos(φ2) *
+                  Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        const d = R * c; // in metres
+        return d;
+    }
+
+
+    // --- Event Listeners ---
+    startTimeInputStartLocation.addEventListener('click', setStartLocationToCurrent);
+
+    startLocationSelect.addEventListener('change', function() {
+        if (this.value === 'current') {
+            startLocationManualInput.style.display = 'none';
+            startLocationManualInput.value = '';
+            startLocationCoords = null;
+        } else if (this.value === 'manual') {
+            startLocationManualInput.style.display = 'inline-block';
+            startLocationCoords = getCoordinatesFromInput(startLocationManualInput);
+            if (startLocationCoords) {
+                if (!initialStartTime) {
+                    initialStartTime = new Date(); // Capture initial start time if manual coords are set
+                    startDistanceCheckActive = true;
+                    checkStartDistance(); // Initial check
+                }
+            } else {
+                startLocationCoords = null; // Reset if invalid manual input
+            }
+        } else { // Selected a saved location
+            startLocationManualInput.style.display = 'inline-block';
+            startLocationManualInput.value = this.selectedOptions[0].textContent + ' (ubicación guardada)';
+            startLocationCoords = JSON.parse(this.value); // Parse coords from option value string
+            if (!initialStartTime) {
+                initialStartTime = new Date(); // Capture initial start time if saved location is set
+                startDistanceCheckActive = true;
+                checkStartDistance(); // Initial check
+            }
+        }
     });
-}
 
-// Actualizar lista al cargar
-updateLocationsList();
+    startLocationManualInput.addEventListener('blur', () => {
+        if (startLocationSelect.value === 'manual') {
+            startLocationCoords = getCoordinatesFromInput(startLocationManualInput);
+            if (startLocationCoords) {
+                 if (!initialStartTime) {
+                    initialStartTime = new Date(); // Capture initial start time if manual coords are updated
+                    startDistanceCheckActive = true;
+                    checkStartDistance(); // Initial check
+                }
+            } else {
+                startLocationCoords = null; // Reset if input becomes invalid
+            }
+        }
+    });
+
+
+    destinationLocationSelect.addEventListener('change', function() {
+        if (this.value) { // If a saved location is selected for destination
+            destinationLocationManualInput.value = this.selectedOptions[0].textContent + ' (ubicación guardada)';
+            destinationLocationManualInput.disabled = true;
+            destinationLocationCoords = JSON.parse(this.value); // Parse coords
+        } else {
+            destinationLocationManualInput.value = '';
+            destinationLocationManualInput.disabled = false;
+            destinationLocationCoords = null;
+        }
+    });
+
+    destinationLocationManualInput.addEventListener('blur', () => {
+        if (!destinationLocationSelect.value) { // If not using a saved destination
+            destinationLocationCoords = getCoordinatesFromInput(destinationLocationManualInput);
+        }
+    });
+
+    arrivalTimeInput.addEventListener('change', () => {
+        const [hours, minutes] = arrivalTimeInput.value.split(':').map(Number);
+        if (!isNaN(hours) && !isNaN(minutes)) {
+            const now = new Date();
+            initialStartTime = new Date(now); // Set initial start time to current time when arrival time is set
+            initialStartTime.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds()); // Keep current time but date will be today.
+            scheduledArrivalTime = new Date(now);
+            scheduledArrivalTime.setHours(hours, minutes, 0, 0);
+            startDistanceCheckActive = true; // Start distance checking when arrival time is set
+            checkStartDistance();
+        } else {
+            scheduledArrivalTime = null;
+            timeStatusDisplay.textContent = 'Hora de llegada inválida.';
+        }
+    });
+
+
+    saveLocationButton.addEventListener('click', saveLocation);
+
+    // Initial location and start updates
+    getLocation(); // Get initial location
+    watchLocation(); // Start watching location for updates
+    let intervalId = setInterval(updateTimeDifference, 5000); // Update time difference every 5 seconds
+
+    // Stop location watch when page is closed/unloaded (optional, but good practice)
+    window.addEventListener('beforeunload', clearWatchLocation);
+});
