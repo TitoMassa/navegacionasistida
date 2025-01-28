@@ -1,17 +1,16 @@
 body {
     font-family: Arial, sans-serif;
-    line-height: 1.6;
     margin: 0;
     padding: 20px;
     background-color: #f0f0f0;
 }
 
-.container {
+.contenedor {
     max-width: 800px;
     margin: 0 auto;
-    background-color: white;
-    padding: 30px;
-    border-radius: 10px;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
@@ -20,24 +19,51 @@ h1 {
     text-align: center;
 }
 
-.btn {
-    display: inline-block;
-    padding: 10px 20px;
+.grupo-formulario {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+}
+
+input[type="number"],
+input[type="datetime-local"] {
+    width: calc(50% - 4px);
+    padding: 8px;
+    margin: 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button {
     background-color: #4CAF50;
     color: white;
+    padding: 10px 20px;
     border: none;
-    border-radius: 5px;
+    border-radius: 4px;
     cursor: pointer;
+    width: 100%;
     font-size: 16px;
 }
 
-.btn:hover {
+button:hover {
     background-color: #45a049;
 }
 
-#resultado {
-    margin-top: 20px;
+.resultado {
+    font-size: 2em;
+    text-align: center;
+    margin: 20px 0;
     padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    background-color: #e8f5e9;
+    border-radius: 4px;
+}
+
+footer {
+    text-align: center;
+    margin-top: 20px;
+    color: #666;
 }
