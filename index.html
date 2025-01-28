@@ -3,51 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navegación Asistida v0.1</title>
+    <title>Navegación Asistida v0.2</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Navegación Asistida v0.1</h1>
-        
-        <div class="input-group">
-            <label>Inicio:</label>
-            <div class="geo-input">
-                <input type="number" id="startLat" step="any" placeholder="Latitud">
-                <input type="number" id="startLon" step="any" placeholder="Longitud">
-                <label class="checkbox">
-                    <input type="checkbox" id="useCurrentLocation"> Usar ubicación actual
-                </label>
+        <header>
+            <h1>📍 Navegación Asistida <span class="version">v0.2</span></h1>
+            <div class="preset-selector">
+                <select id="presets" onchange="loadPreset(this.value)">
+                    <option value="">Ubicaciones guardadas</option>
+                </select>
+                <button onclick="showSavePresetModal()">Guardar ubicación</button>
             </div>
-        </div>
+        </header>
 
-        <div class="input-group">
-            <label>Destino:</label>
-            <div class="geo-input">
-                <input type="number" id="endLat" step="any" placeholder="Latitud">
-                <input type="number" id="endLon" step="any" placeholder="Longitud">
-            </div>
-        </div>
+        <main>
+            <div class="input-section">
+                <div class="input-card">
+                    <h2>🏁 Punto de inicio</h2>
+                    <div class="geo-input">
+                        <input type="number" id="startLat" step="any" placeholder="Latitud">
+                        <input type="number" id="startLon" step="any" placeholder="Longitud">
+                        <label class="checkbox">
+                            <input type="checkbox" id="useCurrentLocation"> Usar ubicación actual
+                        </label>
+                    </div>
+                </div>
 
-        <div class="time-input">
-            <div>
-                <label>Hora de inicio:</label>
-                <input type="datetime-local" id="startTime">
+                <div class="input-card">
+                    <h2>🎯 Destino</h2>
+                    <div class="geo-input">
+                        <input type="number" id="endLat" step="any" placeholder="Latitud">
+                        <input type="number" id="endLon" step="any" placeholder="Longitud">
+                    </div>
+                </div>
             </div>
-            <div>
-                <label>Hora de llegada:</label>
-                <input type="datetime-local" id="arrivalTime">
-            </div>
-        </div>
 
-        <button onclick="startNavigation()">Iniciar Navegación</button>
-        
-        <div id="result"></div>
+            <div class="time-input">
+                <div class="time-picker">
+                    <label>⏰ Hora de inicio</label>
+                    <input type="datetime-local" id="startTime">
+                </div>
+                <div class="time-picker">
+                    <label>🏁 Hora de llegada</label>
+                    <input type="datetime-local" id="arrivalTime">
+                </div>
+            </div>
+
+            <button class="start-button" onclick="startNavigation()">🚀 Iniciar Navegación</button>
+            
+            <div class="status-card" id="result"></div>
+        </main>
+
+        <footer>
+            <p>© 2025 Tito Massa - Todos los derechos reservados</p>
+        </footer>
     </div>
 
-    <footer>
-        <p>© 2025 Tito Massa - Todos los derechos reservados</p>
-    </footer>
+    <!-- Modal para guardar ubicaciones -->
+    <div id="presetModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3>💾 Guardar ubicación</h3>
+            <input type="text" id="presetName" placeholder="Nombre de la ubicación">
+            <div class="modal-options">
+                <label>
+                    <input type="radio" name="presetType" value="start" checked> Como inicio
+                </label>
+                <label>
+                    <input type="radio" name="presetType" value="end"> Como destino
+                </label>
+            </div>
+            <button onclick="savePreset()">Guardar</button>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
