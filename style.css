@@ -1,159 +1,150 @@
-/* style.css */
-:root {
-    --bg: #1a1a1a;
-    --surface: #2d2d2d;
-    --primary: #00ff88;
-    --text: #ffffff;
-    --text-secondary: #888;
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 body {
-    font-family: 'Inter', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.5;
+    font-family: Arial, sans-serif;
+    margin: 0;
     padding: 20px;
+    background-color: #f0f0f0;
 }
 
-.container {
-    max-width: 600px;
+.contenedor {
+    max-width: 800px;
     margin: 0 auto;
-    background: var(--surface);
-    padding: 25px;
-    border-radius: 12px;
-}
-
-header {
-    margin-bottom: 30px;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
 h1 {
-    font-size: 1.8rem;
-    margin-bottom: 20px;
-    color: var(--primary);
+    color: #333;
+    text-align: center;
 }
 
-.input-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-bottom: 25px;
-}
-
-.input-group {
-    background: rgba(255,255,255,0.05);
-    padding: 15px;
-    border-radius: 8px;
+.grupo-formulario {
+    margin-bottom: 15px;
 }
 
 label {
     display: block;
-    margin-bottom: 10px;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
+    margin-bottom: 5px;
+    color: #555;
 }
 
-.geo-input {
-    display: grid;
-    gap: 8px;
+select, input, button {
+    padding: 8px;
+    margin: 4px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
 }
 
 input[type="number"],
-input[type="datetime-local"] {
-    width: 100%;
-    padding: 10px;
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 6px;
-    color: var(--text);
-    font: inherit;
+input[type="datetime-local"],
+input[type="text"] {
+    width: calc(50% - 4px);
+    display: inline-block;
 }
 
-input::placeholder {
-    color: rgba(255,255,255,0.3);
-}
-
-.checkbox {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
-}
-
-.primary-btn {
-    width: 100%;
-    padding: 15px;
-    background: var(--primary);
-    color: var(--bg);
+button {
+    color: white;
+    padding: 10px 20px;
     border: none;
-    border-radius: 8px;
-    font-weight: 600;
     cursor: pointer;
-    transition: opacity 0.2s;
+    font-size: 16px;
+    transition: background-color 0.3s;
 }
 
-.primary-btn:hover {
-    opacity: 0.9;
-}
-
-.time-display {
-    text-align: center;
-    font-size: 2.5rem;
-    font-variant-numeric: tabular-nums;
-    margin: 25px 0;
-    color: var(--primary);
-}
-
-.preset-section {
-    display: grid;
-    gap: 10px;
-}
-
-select {
-    padding: 10px;
-    background: rgba(255,255,255,0.1);
-    border: none;
-    border-radius: 6px;
-    color: var(--text);
-}
-
-.save-preset {
+.grupo-botones {
     display: flex;
     gap: 5px;
+    margin-top: 10px;
 }
 
-#saveName {
-    flex: 1;
+button[type="submit"] {
+    background-color: #4CAF50;
+}
+
+button[type="submit"]:hover {
+    background-color: #45a049;
+}
+
+.btn-detener {
+    background-color: #ff4444;
+}
+
+.btn-detener:hover {
+    background-color: #cc0000;
+}
+
+.btn-eliminar {
+    background-color: #ff9800;
+}
+
+.btn-eliminar:hover {
+    background-color: #f57c00;
+}
+
+.btn-confirmar {
+    background-color: #2196F3;
+}
+
+.btn-confirmar:hover {
+    background-color: #1976D2;
+}
+
+.btn-secundario {
+    background-color: #9E9E9E;
+}
+
+.btn-secundario:hover {
+    background-color: #757575;
+}
+
+.resultado {
+    font-size: 2em;
+    text-align: center;
+    margin: 20px 0;
+    padding: 15px;
+    border-radius: 4px;
+    min-height: 60px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.red {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.green {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.blue {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+.guardar-ubicacion {
+    display: none;
+    background: #f5f5f5;
     padding: 10px;
-    background: rgba(255,255,255,0.1);
-    border: none;
-    border-radius: 6px;
-    color: var(--text);
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.guardar-ubicacion input {
+    width: 100% !important;
+    margin: 5px 0 !important;
 }
 
 footer {
     text-align: center;
-    margin-top: 30px;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
+    margin-top: 20px;
+    color: #666;
 }
 
-@media (max-width: 480px) {
-    .input-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .container {
-        padding: 15px;
-    }
-    
-    .time-display {
-        font-size: 2rem;
-    }
+select {
+    flex-grow: 1;
+    margin-right: 5px;
 }
