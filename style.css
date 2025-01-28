@@ -19,61 +19,73 @@ h1 {
     text-align: center;
 }
 
-.controls {
-    margin-bottom: 20px;
+.input-group {
+    margin: 15px 0;
 }
 
-.input-group {
-    margin: 10px 0;
+.geo-input {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.geo-input input {
+    flex: 1;
+    padding: 8px;
+    min-width: 150px;
+}
+
+.checkbox {
+    white-space: nowrap;
     display: flex;
     align-items: center;
+    gap: 5px;
+}
+
+.time-input {
+    display: grid;
     gap: 10px;
+    margin: 20px 0;
+}
+
+.time-input input {
+    padding: 8px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 button {
     background: #4CAF50;
     color: white;
+    padding: 12px 24px;
     border: none;
-    padding: 8px 15px;
     border-radius: 5px;
     cursor: pointer;
+    width: 100%;
+    font-size: 16px;
 }
 
 button:hover {
     background: #45a049;
 }
 
-#timeDisplay {
-    font-size: 48px;
+#result {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 5px;
     text-align: center;
-    margin: 20px 0;
+    font-size: 24px;
     font-weight: bold;
-    font-family: monospace;
-}
-
-.saved-locations {
-    margin-top: 30px;
-}
-
-#locationList {
-    list-style: none;
-    padding: 0;
-}
-
-#locationList li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px;
-    border-bottom: 1px solid #ddd;
 }
 
 footer {
     text-align: center;
-    margin-top: 30px;
+    margin-top: 20px;
     color: #666;
 }
 
-.red { color: #ff0000; }
-.green { color: #00aa00; }
-.blue { color: #0000ff; }
+@media (max-width: 600px) {
+    .geo-input {
+        flex-direction: column;
+    }
+}
