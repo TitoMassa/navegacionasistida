@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navegación Asistida v0.1</title>
+    <title>Navegación Asistida v0.2</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="contenedor">
-        <h1>Navegación Asistida v0.1</h1>
+        <h1>Navegación Asistida v0.2</h1>
         
         <form id="formulario">
             <div class="grupo-formulario">
@@ -27,6 +27,14 @@
                     <option value="">-- Seleccionar --</option>
                     <option data-lat="-27.466250297959185" data-lon="-58.826945546938774">PELLEGRINI 1858</option>
                 </select>
+                <button type="button" id="btn-guardar-ubicacion">Guardar Nueva</button>
+            </div>
+
+            <div class="grupo-formulario guardar-ubicacion">
+                <label>Guardar nueva ubicación:</label>
+                <input type="text" id="nombre-ubicacion" placeholder="Nombre de la ubicación">
+                <input type="number" step="any" id="new-lat" placeholder="Latitud">
+                <input type="number" step="any" id="new-lon" placeholder="Longitud">
             </div>
 
             <div class="grupo-formulario">
