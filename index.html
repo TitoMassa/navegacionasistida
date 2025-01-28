@@ -10,45 +10,44 @@
     <div class="container">
         <h1>Navegación Asistida v0.1</h1>
         
-        <div class="controls">
-            <div class="input-group">
-                <label>Inicio:</label>
-                <select id="startPoint">
-                    <option value="current">Ubicación actual</option>
-                </select>
-                <button onclick="saveLocation('start')">Guardar</button>
+        <div class="input-group">
+            <label>Inicio:</label>
+            <div class="geo-input">
+                <input type="number" id="startLat" step="any" placeholder="Latitud">
+                <input type="number" id="startLon" step="any" placeholder="Longitud">
+                <label class="checkbox">
+                    <input type="checkbox" id="useCurrentLocation"> Usar ubicación actual
+                </label>
             </div>
-            
-            <div class="input-group">
-                <label>Destino:</label>
-                <select id="endPoint"></select>
-                <button onclick="saveLocation('end')">Guardar</button>
-            </div>
-            
-            <div class="input-group">
-                <label>Hora inicio:</label>
-                <input type="time" id="startTime" required>
-            </div>
-            
-            <div class="input-group">
-                <label>Hora llegada:</label>
-                <input type="time" id="endTime" required>
-            </div>
-            
-            <button onclick="startNavigation()">Iniciar navegación</button>
         </div>
 
-        <div id="timeDisplay">--:--</div>
-        
-        <div class="saved-locations">
-            <h3>Ubicaciones guardadas:</h3>
-            <ul id="locationList"></ul>
+        <div class="input-group">
+            <label>Destino:</label>
+            <div class="geo-input">
+                <input type="number" id="endLat" step="any" placeholder="Latitud">
+                <input type="number" id="endLon" step="any" placeholder="Longitud">
+            </div>
         </div>
+
+        <div class="time-input">
+            <div>
+                <label>Hora de inicio:</label>
+                <input type="datetime-local" id="startTime">
+            </div>
+            <div>
+                <label>Hora de llegada:</label>
+                <input type="datetime-local" id="arrivalTime">
+            </div>
+        </div>
+
+        <button onclick="startNavigation()">Iniciar Navegación</button>
         
-        <footer>
-            <p>© 2025 Tito Massa - Todos los derechos reservados</p>
-        </footer>
+        <div id="result"></div>
     </div>
+
+    <footer>
+        <p>© 2025 Tito Massa - Todos los derechos reservados</p>
+    </footer>
 
     <script src="script.js"></script>
 </body>
