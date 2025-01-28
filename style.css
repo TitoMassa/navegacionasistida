@@ -1,130 +1,99 @@
-/* style.css */
 body {
     font-family: Arial, sans-serif;
-    margin: 20px;
-    background-color: #f4f4f4;
-    color: #333;
-}
-
-h1, h2 {
-    text-align: center;
-    color: #0056b3;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f0f0;
 }
 
 .container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
     max-width: 800px;
     margin: 0 auto;
+    background-color: white;
     padding: 20px;
-    background-color: #fff;
-    border-radius: 8px;
+    border-radius: 10px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-.location-input, .time-input, .predefined-locations-management, .time-difference-display {
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+h1 {
+    color: #333;
+    text-align: center;
 }
 
 .input-group {
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
+    margin: 15px 0;
 }
 
-.input-group label {
-    min-width: 150px;
-    margin-right: 10px;
-    text-align: right;
+label {
+    display: inline-block;
+    width: 120px;
 }
 
-.input-group input[type="text"],
-.input-group input[type="time"],
-.input-group select {
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    flex-grow: 1;
+select, input[type="datetime-local"] {
+    width: 250px;
+    padding: 5px;
 }
 
-.input-group button {
-    padding: 8px 12px;
-    border: none;
-    border-radius: 4px;
-    background-color: #007bff;
+button {
+    background-color: #4CAF50;
     color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
     cursor: pointer;
     margin-left: 10px;
 }
 
-.input-group button:hover {
-    background-color: #0056b3;
+button:hover {
+    background-color: #45a049;
 }
 
-#time-difference {
-    font-size: 2em;
+.main-button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    margin: 20px 0;
+}
+
+.time-display {
+    font-size: 48px;
     text-align: center;
-    margin-top: 10px;
-    margin-bottom: 10px;
+    margin: 30px 0;
+    font-family: monospace;
 }
 
-.time-red {
-    color: red;
+.red { color: #ff0000; }
+.green { color: #00cc00; }
+.blue { color: #0000ff; }
+
+.save-location {
+    margin-top: 30px;
+    border-top: 1px solid #ccc;
+    padding-top: 20px;
 }
 
-.time-blue {
-    color: blue;
+#locationName {
+    width: 200px;
+    padding: 5px;
 }
 
-.time-green {
-    color: green;
-}
-
-#saved-locations-list {
-    list-style: none;
+.saved-locations ul {
+    list-style-type: none;
     padding: 0;
-    margin-top: 10px;
 }
 
-#saved-locations-list li {
+.saved-locations li {
+    margin: 5px 0;
+    padding: 5px;
+    background-color: #f8f8f8;
+    border-radius: 4px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px dashed #eee;
 }
 
-#saved-locations-list li:last-child {
-    border-bottom: none;
-}
-
-#saved-locations-list li span {
-    flex-grow: 1;
-}
-
-#saved-locations-list li button {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9em;
-}
-
-#saved-locations-list li button:hover {
-    background-color: #c82333;
-}
-
-footer {
+.copyright {
     text-align: center;
     margin-top: 30px;
-    padding: 10px;
-    background-color: #ddd;
-    border-radius: 5px;
-    color: #555;
-    font-size: 0.8em;
+    color: #666;
+    font-size: 0.9em;
 }
