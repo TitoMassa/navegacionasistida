@@ -1,3 +1,28 @@
+/* Se mantienen todos los estilos originales y se añaden ajustes para el nuevo select */
+
+.grupo-formulario input[type="number"],
+.grupo-formulario input[type="datetime-local"],
+.grupo-formulario input[type="text"] {
+    width: calc(50% - 4px);
+    display: inline-block;
+    margin-top: 5px;
+}
+
+.grupo-formulario select {
+    width: 100%;
+    margin: 5px 0;
+}
+
+.grupo-botones {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+/* Resto del CSS original se mantiene igual */
+
+
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
