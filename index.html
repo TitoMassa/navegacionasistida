@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navegación Asistida v0.2</title>
+    <title>Navegación Asistida v0.3</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="contenedor">
-        <h1>Navegación Asistida v0.2</h1>
+        <h1>Navegación Asistida v0.3</h1>
         
         <form id="formulario">
             <div class="grupo-formulario">
@@ -23,11 +23,13 @@
 
             <div class="grupo-formulario">
                 <label>Ubicaciones predefinidas:</label>
-                <select id="ubicaciones-predefinidas">
-                    <option value="">-- Seleccionar --</option>
-                    <option data-lat="-27.466250297959185" data-lon="-58.826945546938774">PELLEGRINI 1858</option>
-                </select>
-                <button type="button" id="btn-guardar-ubicacion">Guardar Nueva</button>
+                <div class="grupo-botones">
+                    <select id="ubicaciones-predefinidas">
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                    <button type="button" id="btn-guardar-ubicacion" class="btn-secundario">Guardar Nueva</button>
+                    <button type="button" id="btn-eliminar" class="btn-eliminar">Eliminar</button>
+                </div>
             </div>
 
             <div class="grupo-formulario guardar-ubicacion">
@@ -35,6 +37,7 @@
                 <input type="text" id="nombre-ubicacion" placeholder="Nombre de la ubicación">
                 <input type="number" step="any" id="new-lat" placeholder="Latitud">
                 <input type="number" step="any" id="new-lon" placeholder="Longitud">
+                <button type="button" id="btn-confirmar-guardar" class="btn-confirmar">Confirmar Guardado</button>
             </div>
 
             <div class="grupo-formulario">
@@ -53,7 +56,10 @@
                 <input type="datetime-local" id="arrival-time" required>
             </div>
 
-            <button type="submit">Iniciar navegación</button>
+            <div class="grupo-botones">
+                <button type="submit">Iniciar navegación</button>
+                <button type="button" id="btn-detener" class="btn-detener">Detener Navegación</button>
+            </div>
         </form>
 
         <div id="resultado" class="resultado"></div>
