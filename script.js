@@ -1,14 +1,15 @@
-// Simulación de rutas guardadas (debería venir de un backend o almacenamiento local)
-const storedRoutes = [
-    {
-        name: "Ruta 1",
-        route: [{ lat: 40.7128, lon: -74.0060 }, { lat: 40.7306, lon: -73.9352 }],
-        stops: [
-            { name: "Parada 1", lat: 40.7128, lon: -74.0060, time: "14:30:00" },
-            { name: "Parada 2", lat: 40.7306, lon: -73.9352, time: "14:45:00" }
-        ]
-    }
-];
+document.addEventListener("DOMContentLoaded", function () {
+    let storedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
+    let routeSelector = document.getElementById("route-selector");
+
+    // Llenar el selector con las rutas guardadas
+    storedRoutes.forEach((route, index) => {
+        let option = document.createElement("option");
+        option.value = index;
+        option.textContent = route.name;
+        routeSelector.appendChild(option);
+    });
+});
 
 let map = L.map('map').setView([0, 0], 15);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -16,19 +17,8 @@ let marker = L.marker([0, 0]).addTo(map);
 let watchId = null;
 let selectedRoute = null;
 
-// Cargar rutas en el selector
-function loadRoutes() {
-    let selector = document.getElementById("route-selector");
-    storedRoutes.forEach((route, index) => {
-        let option = document.createElement("option");
-        option.value = index;
-        option.textContent = route.name;
-        selector.appendChild(option);
-    });
-}
-
-// Iniciar GPS y calcular diferencia de tiempo
 function startNavigation() {
+    let storedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
     let selectedIndex = document.getElementById("route-selector").value;
     selectedRoute = storedRoutes[selectedIndex];
 
@@ -54,16 +44,14 @@ function startNavigation() {
     }
 }
 
-// Detener la navegación
 function stopNavigation() {
     if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
-        document.getElementById("time-difference").textContent = "Navegación detenida";
+        document.getElementById("time-difference").textContent = "";
     }
 }
 
-// Calcular diferencia de tiempo en formato MM:SS
 function calculateTimeDifference(lat, lon) {
     let closestStop = null;
     let minDistance = Infinity;
@@ -88,12 +76,21 @@ function calculateTimeDifference(lat, lon) {
     let secondsDiff = (Math.abs(timeDiff) % 60).toString().padStart(2, '0');
 
     let sign = timeDiff < 0 ? "-" : "+";
-    document.getElementById("time-difference").textContent = `${sign}${minutesDiff}:${secondsDiff}`;
+    let formattedTime = `${sign}${minutesDiff}:${secondsDiff}`;
+    let timeDifferenceElement = document.getElementById("time-difference");
+
+    // Aplicar colores según el tiempo de diferencia
+    let totalDiffInSeconds = Math.abs(timeDiff);
+    if (totalDiffInSeconds > 120) {
+        timeDifferenceElement.style.color = timeDiff < 0 ? "red" : "blue";
+    } else {
+        timeDifferenceElement.style.color = "green";
+    }
+
+    timeDifferenceElement.style.fontSize = "24px";
+    timeDifferenceElement.style.fontWeight = "bold";
+    timeDifferenceElement.textContent = formattedTime;
 }
 
-// Eventos para iniciar/detener navegación
 document.getElementById("start-navigation").addEventListener("click", startNavigation);
 document.getElementById("stop-navigation").addEventListener("click", stopNavigation);
-
-// Cargar rutas al iniciar
-loadRoutes();
