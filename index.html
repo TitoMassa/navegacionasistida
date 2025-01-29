@@ -111,6 +111,12 @@
             font-weight: bold;
         }
 
+        #navigation-controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
 
         @media (max-width: 768px) {
             h1 {
@@ -158,6 +164,11 @@
             <div id="next-stop-info">
                 <span id="next-stop-name"></span> <span id="next-stop-time">--:--</span>
             </div>
+
+            <div id="navigation-controls">
+                <button id="prev-stop-button">Parada Anterior</button>
+                <button id="skip-stop-button">Saltar Parada</button>
+            </div>
         </div>
 
         <div id="creator-page" style="display: none;">
@@ -193,6 +204,9 @@
         const timeDiffValueDisplay = document.getElementById('time-diff-value');
         const nextStopNameDisplay = document.getElementById('next-stop-name');
         const nextStopTimeDisplay = document.getElementById('next-stop-time');
+        const prevStopButton = document.getElementById('prev-stop-button');
+        const skipStopButton = document.getElementById('skip-stop-button');
+
 
         let map;
         let stops = [];
@@ -258,6 +272,7 @@
                     currentRouteStopsForNavigation = selectedRoute.stops;
                     currentStopIndex = -1;
                     nextStopIndex = 0;
+                    updateNavigationDisplay(currentLatitude, currentLongitude); // Initial display update
                 }
             }
         }
@@ -370,7 +385,7 @@
         function updateNavigationDisplay(currentLat, currentLng) {
             if (currentRouteStopsForNavigation.length > 0) {
                 let nextStop = currentRouteStopsForNavigation[nextStopIndex];
-                let stopToDisplay = nextStop; // Initially assume next stop is the one to display
+                let stopToDisplay = nextStop;
 
                 if (!nextStop) {
                     timeDiffValueDisplay.textContent = "Fin de ruta";
@@ -379,10 +394,10 @@
                     return;
                 }
 
-                if (currentStopIndex !== -1) { // Currently at a stop
+                if (currentStopIndex !== -1) {
                     const currentStop = currentRouteStopsForNavigation[currentStopIndex];
                     const distanceToCurrentStop = calculateDistance(currentLat, currentLng, currentStop.lat, currentStop.lng);
-                    if (distanceToCurrentStop > 10) { // Departed from current stop
+                    if (distanceToCurrentStop > 10) {
                         currentStopIndex = -1;
                         nextStopIndex++;
                         if (nextStopIndex >= currentRouteStopsForNavigation.length) {
@@ -391,23 +406,23 @@
                             nextStopTimeDisplay.textContent = "--:--";
                             return;
                         }
-                        nextStop = currentRouteStopsForNavigation[nextStopIndex]; // Update next stop
-                        stopToDisplay = nextStop; // Display info for the new next stop
+                        nextStop = currentRouteStopsForNavigation[nextStopIndex];
+                        stopToDisplay = nextStop;
                     } else {
-                        stopToDisplay = currentStop; // If still at stop or just departed but < 10m, display info for the CURRENT stop
+                        stopToDisplay = currentStop;
                     }
-                } else { // Not at a stop
+                } else {
                     const distanceToNextStop = calculateDistance(currentLat, currentLng, nextStop.lat, nextStop.lng);
-                    if (distanceToNextStop <= 5) { // Arrived at next stop
+                    if (distanceToNextStop <= 5) {
                         currentStopIndex = nextStopIndex;
-                        stopToDisplay = nextStop; // Display info for the current stop we just arrived at
+                        stopToDisplay = nextStop;
                     } else {
-                        stopToDisplay = nextStop; // Still navigating towards next stop, display info for the NEXT stop
+                        stopToDisplay = nextStop;
                     }
                 }
 
 
-                if (stopToDisplay) { // Use stopToDisplay to calculate time difference and display info
+                if (stopToDisplay) {
                     calculateTimeDifference(stopToDisplay);
                     nextStopNameDisplay.textContent = stopToDisplay.name;
                     nextStopTimeDisplay.textContent = stopToDisplay.scheduledArrivalTime;
@@ -426,7 +441,7 @@
         }
 
 
-        function calculateTimeDifference(stop) { // Now takes 'stop' as argument
+        function calculateTimeDifference(stop) {
             if (!stop || !stop.scheduledArrivalTime) {
                 timeDiffValueDisplay.textContent = "--:--";
                 return;
@@ -480,7 +495,6 @@
             startNavigation();
         }
 
-
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const φ1 = lat1 * Math.PI/180;
@@ -497,21 +511,21 @@
             return d;
         }
 
+        // --- Manual Navigation Control ---
+        function skipToNextStop() {
+            if (currentRouteStopsForNavigation.length > 0 && nextStopIndex < currentRouteStopsForNavigation.length - 1) {
+                nextStopIndex++;
+                currentStopIndex = -1; // Reset current stop as we are skipping
+                updateNavigationDisplay(currentLatitude, currentLongitude); // Update display immediately
+            } else if (nextStopIndex >= currentRouteStopsForNavigation.length - 1) {
+                alert("Ya estás en la última parada.");
+            } else {
+                alert("No hay ruta seleccionada o no hay paradas siguientes.");
+            }
+        }
 
-        // --- Event Listeners ---
-        creatorButton.addEventListener('click', showCreatorPage);
-        backToNavigationButton.addEventListener('click', showNavigationPage);
-        addStopButton.addEventListener('click', addStopToList);
-        saveRouteButton.addEventListener('click', saveRoute);
-        routeSelect.addEventListener('change', loadSelectedRoute);
-        deleteRouteButton.addEventListener('click', deleteRoute);
-
-
-        // --- Initial Setup ---
-        showNavigationPage();
-        loadRoutes();
-        startNavigation();
-
-    </script>
-</body>
-</html>
+        function goToPreviousStop() {
+            if (currentRouteStopsForNavigation.length > 0 && nextStopIndex > 0) {
+                nextStopIndex--;
+                currentStopIndex = -1; // Reset current stop
+           
