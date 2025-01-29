@@ -75,6 +75,9 @@
             margin-bottom: 5px;
             padding: 8px;
             border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         #stop-list li:last-child {
@@ -118,6 +121,16 @@
             margin-top: 10px;
         }
 
+        .stop-details {
+            flex-grow: 1;
+        }
+
+        .stop-actions button {
+            margin-left: 5px;
+            padding: 5px 8px;
+            font-size: 0.9em;
+        }
+
 
         @media (max-width: 768px) {
             h1 {
@@ -150,7 +163,7 @@
     <div id="main-container">
         <div id="navigation-page">
             <h2>Navegación</h2>
-            <button id="creator-button">Crear Ruta</button>  <!-- Botón "Crear Ruta" -->
+            <button id="creator-button">Crear Ruta</button>
 
             <label for="route-select">Seleccionar Ruta:</label>
             <select id="route-select">
@@ -173,7 +186,7 @@
         </div>
 
         <div id="creator-page" style="display: none;">
-            <h2>Creador de Ruta</h2>  <!-- Título "Creador de Ruta" -->
+            <h2>Creador de Ruta</h2>
             <div id="map"></div>
             <div id="stop-form">
                 <input type="text" id="stop-name" placeholder="Nombre de la Parada">
@@ -208,9 +221,9 @@
         const prevStopButton = document.getElementById('prev-stop-button');
         const skipStopButton = document.getElementById('skip-stop-button');
 
-
         let map;
         let stops = [];
+        let routeMarkers = []; // Array to store Leaflet markers for stops
         let currentRouteName = '';
         let watchId;
         let currentRouteStopsForNavigation = [];
@@ -229,8 +242,7 @@
                 routes.push({ name: routeName, stops: stops });
                 localStorage.setItem('busRoutes', JSON.stringify(routes));
                 loadRoutes();
-                stops = [];
-                stopList.innerHTML = '';
+                clearCreatorData(); // Clear stops and map markers after saving
                 alert(`Ruta "${routeName}" guardada!`);
                 showNavigationPage();
             }
@@ -285,63 +297,109 @@
                 attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            map.on('click', function(e) {
-                const latlng = e.latlng;
-                L.marker(latlng).addTo(map)
-                    .bindPopup(`Nueva parada en: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`).openPopup();
-                stopNameInput.value = '';
-                scheduledTimeArrivalInput.value = '';
-                scheduledTimeDepartureInput.value = '';
-                stopNameInput.focus();
-
-                map.tempLatLng = latlng;
-            });
+            map.on('click', onMapClick); // Use a named function for the event
         }
 
-        function addStopToList() {
-            if (!map.tempLatLng) {
-                alert("Por favor, selecciona una ubicación en el mapa primero.");
-                return;
-            }
-            const stopName = stopNameInput.value.trim();
-            const scheduledTimeArrival = scheduledTimeArrivalInput.value;
-            const scheduledTimeDeparture = scheduledTimeDepartureInput.value;
+        function onMapClick(e) {
+            const latlng = e.latlng;
+            // Open popup directly to get stop details on map click
+            L.popup()
+                .setLatLng(latlng)
+                .setContent(`
+                    <div id="popup-form">
+                        <input type="text" id="popup-stop-name" placeholder="Nombre de Parada">
+                        <input type="time" id="popup-arrival-time" placeholder="Llegada (HH:MM)">
+                        <input type="time" id="popup-departure-time" placeholder="Salida (HH:MM) - Opcional">
+                        <button type="button" onclick="addStopFromPopup(${latlng.lat}, ${latlng.lng})">Agregar Parada</button>
+                    </div>
+                `)
+                .openOn(map);
+        }
 
-            const latlng = map.tempLatLng;
+        // Function to be called from the popup to add a stop
+        window.addStopFromPopup = function(lat, lng) {
+            const popupContent = document.getElementById('popup-form');
+            const stopName = popupContent.querySelector('#popup-stop-name').value.trim();
+            const scheduledArrivalTime = popupContent.querySelector('#popup-arrival-time').value;
+            const scheduledDepartureTime = popupContent.querySelector('#popup-departure-time').value;
 
-            if (stopName && scheduledTimeArrival) {
+            if (stopName && scheduledArrivalTime) {
                 const newStop = {
                     name: stopName,
-                    lat: latlng.lat,
-                    lng: latlng.lng,
-                    scheduledArrivalTime: scheduledTimeArrival,
-                    scheduledDepartureTime: scheduledTimeDeparture
+                    lat: lat,
+                    lng: lng,
+                    scheduledArrivalTime: scheduledArrivalTime,
+                    scheduledDepartureTime: scheduledDepartureTime
                 };
                 stops.push(newStop);
                 updateStopListDisplay();
-                map.tempLatLng = null;
-                L.popup().remove();
-                stopNameInput.value = '';
-                scheduledTimeArrivalInput.value = '';
-                scheduledTimeDepartureInput.value = '';
+                addMarkerToMap(newStop); // Add marker immediately
+                map.closePopup(); // Close the popup after adding
             } else {
                 alert("Por favor, ingresa nombre y horario de llegada para la parada.");
             }
+        };
+
+        function addMarkerToMap(stop) {
+            const marker = L.marker([stop.lat, stop.lng])
+                              .bindPopup(`${stop.name}<br>Llegada: ${stop.scheduledArrivalTime}`);
+            routeMarkers.push(marker); // Store marker for clearing later
+            marker.addTo(map);
         }
+
 
         function updateStopListDisplay() {
             stopList.innerHTML = '';
             stops.forEach((stop, index) => {
-                let listItemText = `${stop.name} - Llegada: ${stop.scheduledArrivalTime}`;
-                if (stop.scheduledDepartureTime) {
-                    listItemText += ` - Salida: ${stop.scheduledDepartureTime}`;
-                }
-                listItemText += ` - Coordenadas: ${stop.lat.toFixed(4)}, ${stop.lng.toFixed(4)}`;
                 const listItem = document.createElement('li');
-                listItem.textContent = listItemText;
+                listItem.innerHTML = `
+                    <div class="stop-details">
+                        ${stop.name} - Llegada: ${stop.scheduledArrivalTime} ${stop.scheduledDepartureTime ? '- Salida: ' + stop.scheduledDepartureTime : ''}
+                        <br>
+                        Coordenadas: ${stop.lat.toFixed(4)}, ${stop.lng.toFixed(4)}
+                    </div>
+                    <div class="stop-actions">
+                        <button onclick="editStop(${index})">Editar</button>
+                        <button onclick="deleteStop(${index})">Eliminar</button>
+                    </div>
+                `;
                 stopList.appendChild(listItem);
             });
         }
+
+        function editStop(index) {
+            // Implement edit functionality if needed, e.g., populate form with stop data
+            alert('Función de edición no implementada en este ejemplo. Index de parada: ' + index);
+        }
+
+        function deleteStop(index) {
+            stops.splice(index, 1);
+            // Remove marker from map and routeMarkers array
+            if (routeMarkers[index]) {
+                map.removeLayer(routeMarkers[index]);
+                routeMarkers.splice(index, 1); // Also remove from the array to keep in sync
+            } else {
+                // If marker not found at index, try to find and remove based on stop coordinates (less efficient, but safer)
+                routeMarkers.forEach((marker, markerIndex) => {
+                    if (marker && marker.getLatLng().lat === stops[index].lat && marker.getLatLng().lng === stops[index].lng) {
+                        map.removeLayer(marker);
+                        routeMarkers.splice(markerIndex, 1);
+                        return; // Exit after finding and removing the first matching marker
+                    }
+                });
+            }
+            updateStopListDisplay();
+        }
+
+
+        function clearCreatorData() {
+            stops = [];
+            stopList.innerHTML = '';
+            // Clear all markers from the map and reset routeMarkers array
+            routeMarkers.forEach(marker => map.removeLayer(marker));
+            routeMarkers = [];
+        }
+
 
         // --- Navigation Page Functions ---
 
@@ -453,75 +511,4 @@
 
 
         function calculateTimeDifference(stop) {
-            if (!stop || !stop.scheduledArrivalTime || currentLatitude === undefined || currentLongitude === undefined) {
-                timeDiffValueDisplay.textContent = "--:--";
-                return;
-            }
-
-            const scheduledTimeStr = stop.scheduledArrivalTime;
-            const scheduledTimeParts = scheduledTimeStr.split(':');
-            const scheduledHour = parseInt(scheduledTimeParts[0]);
-            const scheduledMinute = parseInt(scheduledTimeParts[1]);
-
-            const scheduledDate = new Date();
-            scheduledDate.setHours(scheduledHour, scheduledMinute, 0, 0);
-
-            const now = new Date();
-            const timeDiffMs = scheduledDate.getTime() - now.getTime();
-            const timeDiffSeconds = Math.round(timeDiffMs / 1000);
-
-            const minutes = Math.floor(Math.abs(timeDiffSeconds) / 60);
-            const seconds = Math.abs(timeDiffSeconds) % 60;
-            const sign = timeDiffSeconds >= 0 ? '+' : '-';
-
-            const formattedTimeDiff = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            timeDiffValueDisplay.textContent = formattedTimeDiff;
-        }
-
-
-        function stopNavigation() {
-            if (watchId) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-            }
-            if (timeDifferenceInterval) {
-                clearInterval(timeDifferenceInterval);
-                timeDifferenceInterval = null;
-            }
-        }
-
-
-        function showCreatorPage() {
-            navigationPage.style.display = 'none';
-            creatorPage.style.display = 'block';
-            initMap();
-            stopNavigation();
-        }
-
-        function showNavigationPage() {
-            creatorPage.style.display = 'none';
-            navigationPage.style.display = 'block';
-            stopNavigation();
-            loadRoutes();
-            startNavigation();
-        }
-
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const φ1 = lat1 * Math.PI/180;
-            const φ2 = lat2 * Math.PI/180;
-            const Δφ = (lat2-lat1) * Math.PI/180;
-            const Δλ = (lon2-lon1) * Math.PI/180;
-
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                    Math.cos(φ1) * Math.cos(φ2) *
-                    Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-            const d = R * c;
-            return d;
-        }
-
-        // --- Manual Navigation Control ---
-        function skipToNextStop() {
-            if (currentRouteStopsForNavigation.length > 0 && nextStopIndex < currentRouteStopsForNavigation.
+            if (!stop || !stop.scheduledArriv
