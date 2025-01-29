@@ -31,6 +31,8 @@
     <button class="button" onclick="detenerNavegacion()">Detener Navegación</button>
     <p id="diferencia-tiempo" class="info">Diferencia: --:--</p>
     <p id="proxima-parada">Próxima parada: -</p>
+    <button class="button" onclick="siguienteParadaManual()">Siguiente parada</button>
+    <button class="button" onclick="anteriorParadaManual()">Parada anterior</button>
 
     <script>
         let map = L.map('map').setView([0, 0], 15);
@@ -114,6 +116,7 @@
             enParada = false;
             actualizarProximaParada();
             alert("Navegación iniciada.");
+            setInterval(actualizarDiferenciaTiempo, 5000);
         }
 
         function detenerNavegacion() {
@@ -137,12 +140,10 @@
             let parada = ruta[indexParada];
             let distancia = calcularDistancia(lat, lng, parada.lat, parada.lng);
 
-            if (distancia <= 20) {
-                if (!enParada) {
-                    enParada = true;
-                    compararTiempo(parada.horarioLlegada);
-                }
-            } else if (enParada && distancia > 20) {
+            if (distancia <= 20 && !enParada) {
+                enParada = true;
+                compararTiempo(parada.horarioLlegada);
+            } else if (distancia > 20 && enParada) {
                 enParada = false;
                 alert(`Has pasado la parada: ${parada.nombre}`);
                 indexParada++;
@@ -165,6 +166,20 @@
             let signo = diferencia < 0 ? "-" : "+";
 
             document.getElementById("diferencia-tiempo").innerText = `Diferencia: ${signo}${minutos.toString().padStart(2, "0")}:${segundos.toString().padStart(2, "0")}`;
+        }
+
+        function siguienteParadaManual() {
+            if (indexParada < ruta.length - 1) {
+                indexParada++;
+                actualizarProximaParada();
+            }
+        }
+
+        function anteriorParadaManual() {
+            if (indexParada > 0) {
+                indexParada--;
+                actualizarProximaParada();
+            }
         }
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
