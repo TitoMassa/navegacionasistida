@@ -58,7 +58,8 @@
         <div id="map"></div>
         <div class="info">
             <div>Próxima parada: <span id="next-stop-name">Ninguna</span></div>
-            <div>Hora programada: <span id="next-stop-time">--:--</span></div>
+            <div>Hora programada de llegada: <span id="next-stop-arrival-time">--:--</span></div>
+            <div>Hora programada de salida: <span id="next-stop-departure-time">--:--</span></div>
             <div class="time-diff" id="time-difference">00:00</div>
             <button id="skip-stop">Saltar Parada</button>
             <button id="prev-stop" class="hidden">Parada Anterior</button>
@@ -69,7 +70,6 @@
         <ul id="stops-list" class="stop-list"></ul>
         <button onclick="saveRoute()">Guardar Ruta</button>
         <button onclick="startNavigation()" id="start-navigation" disabled>Iniciar Navegación</button>
-
     </div>
 
     <script>
@@ -134,9 +134,15 @@
             let stopName = prompt("Nombre de la parada:");
             if (stopName === null || stopName.trim() === "") return;
 
-            let stopTime = prompt("Hora programada (HH:MM):");
-            if (stopTime === null || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(stopTime)) {
-                alert("Formato de hora inválido. Debe ser HH:MM.");
+            let arrivalTime = prompt("Hora programada de llegada (HH:MM):");
+            if (arrivalTime === null || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(arrivalTime)) {
+                alert("Formato de hora de llegada inválido. Debe ser HH:MM.");
+                return;
+            }
+
+            let departureTime = prompt("Hora programada de salida (HH:MM):");
+            if (departureTime === null || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(departureTime)) {
+                alert("Formato de hora de salida inválido. Debe ser HH:MM.");
                 return;
             }
 
@@ -144,7 +150,8 @@
             markers.push(marker);
             currentRoute.push({
                 name: stopName,
-                time: stopTime,
+                arrivalTime: arrivalTime,
+                departureTime: departureTime,
                 latlng: e.latlng
             });
 
@@ -156,7 +163,7 @@
             stopsList.innerHTML = '';
             currentRoute.forEach((stop, index) => {
                 let li = document.createElement('li');
-                li.innerHTML = `${stop.name} - ${stop.time} <button onclick="editStop(${index})">Editar</button> <button onclick="deleteStop(${index})">Eliminar</button>`;
+                li.innerHTML = `${stop.name} - Llegada: ${stop.arrivalTime}, Salida: ${stop.departureTime} <button onclick="editStop(${index})">Editar</button> <button onclick="deleteStop(${index})">Eliminar</button>`;
                 stopsList.appendChild(li);
             });
             document.getElementById('start-navigation').disabled = currentRoute.length === 0;
@@ -167,14 +174,21 @@
             let newName = prompt("Nuevo nombre de la parada:", stop.name);
             if (newName === null || newName.trim() === "") return;
 
-            let newTime = prompt("Nueva hora programada (HH:MM):", stop.time);
-            if (newTime === null || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(newTime)) {
-                alert("Formato de hora inválido. Debe ser HH:MM.");
+            let newArrivalTime = prompt("Nueva hora programada de llegada (HH:MM):", stop.arrivalTime);
+            if (newArrivalTime === null || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(newArrivalTime)) {
+                alert("Formato de hora de llegada inválido. Debe ser HH:MM.");
+                return;
+            }
+
+            let newDepartureTime = prompt("Nueva hora programada de salida (HH:MM):", stop.departureTime);
+            if (newDepartureTime === null || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(newDepartureTime)) {
+                alert("Formato de hora de salida inválido. Debe ser HH:MM.");
                 return;
             }
 
             stop.name = newName;
-            stop.time = newTime;
+            stop.arrivalTime = newArrivalTime;
+            stop.departureTime = newDepartureTime;
             updateStopsList();
         }
 
@@ -253,10 +267,12 @@
         function updateNextStopInfo() {
             if (navigationRoute && nextStopIndex < navigationRoute.length) {
                 document.getElementById('next-stop-name').innerText = navigationRoute[nextStopIndex].name;
-                document.getElementById('next-stop-time').innerText = navigationRoute[nextStopIndex].time;
+                document.getElementById('next-stop-arrival-time').innerText = navigationRoute[nextStopIndex].arrivalTime;
+                document.getElementById('next-stop-departure-time').innerText = navigationRoute[nextStopIndex].departureTime;
             } else {
                 document.getElementById('next-stop-name').innerText = 'Fin de la ruta';
-                document.getElementById('next-stop-time').innerText = '--:--';
+                document.getElementById('next-stop-arrival-time').innerText = '--:--';
+                document.getElementById('next-stop-departure-time').innerText = '--:--';
             }
         }
 
@@ -284,10 +300,10 @@
                 let distance = calculateDistance(currentLatLng.lat, currentLatLng.lng, nextStop.latlng.lat, nextStop.latlng.lng);
 
                 let currentTime = new Date();
-                let [hours, minutes] = nextStop.time.split(':').map(Number);
-                let scheduledTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), hours, minutes);
+                let [arrivalHours, arrivalMinutes] = nextStop.arrivalTime.split(':').map(Number);
+                let scheduledArrivalTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), arrivalHours, arrivalMinutes);
 
-                let timeDiff = scheduledTime - currentTime; // Diferencia en milisegundos
+                let timeDiff = scheduledArrivalTime - currentTime; // Diferencia en milisegundos
 
                 // Checkear si el usuario ha pasado la parada (20 metros de radio)
                 if (distance < 20 && nextStopIndex < navigationRoute.length - 1) {
