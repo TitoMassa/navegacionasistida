@@ -3,26 +3,356 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logística de Autobuses</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Smart Move - Logística de Autobuses</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        #app-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        #status {
+            margin-bottom: 15px;
+            font-style: italic;
+            color: #777;
+        }
+        #stop-info {
+            margin-bottom: 20px;
+        }
+        #time-difference {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .ahead {
+            color: green;
+        }
+        .behind {
+            color: red;
+        }
+        .on-time {
+            color: blue;
+        }
+        #error-message {
+            color: red;
+            margin-top: 15px;
+            display: none;
+        }
+        #route-management {
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 20px;
+            text-align: left;
+        }
+        .stop-input-group {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .stop-input-group label {
+            margin-right: 10px;
+            width: 100px;
+            text-align: right;
+            display: inline-block;
+        }
+        .stop-input-group input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        #stops-container {
+            margin-top: 15px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #saved-routes-list {
+            margin-top: 10px;
+        }
+        #saved-routes-list select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Logística de Autobuses</h1>
-        <div class="bus-info">
-            <div class="location">
-              <p><strong>Latitud: </strong><span id="latitude">Desconocida</span></p>
-              <p><strong>Longitud: </strong><span id="longitude">Desconocida</span></p>
-            </div>
-            <div class="time-info">
-                <p><strong>Próxima Parada: </strong><span id="next-stop">Cargando...</span></p>
-                <p><strong>Diferencia de Tiempo: </strong><span id="time-difference">Cargando...</span></p>
-            </div>
+    <div id="app-container">
+        <h1>Smart Move</h1>
+        <div id="status">Obteniendo ubicación GPS...</div>
+        <div id="stop-info">
+            <p><strong>Próxima Parada:</strong> <span id="next-stop-name"></span></p>
+            <p><strong>Horario Programado:</strong> <span id="scheduled-time"></span></p>
         </div>
-        <div id="map" class="map">
-           <!--  Aquí iría el mapa si lo implementas -->
+        <div id="time-difference" class="on-time">--:--</div>
+        <div id="error-message"></div>
+
+        <div id="route-management">
+            <h2>Gestión de Ruta</h2>
+            <div id="stops-container">
+                <!-- Aquí se agregarán dinámicamente los inputs para las paradas -->
+            </div>
+            <button id="add-stop-button">Añadir Parada</button>
+            <button id="save-route-button">Guardar Ruta</button>
+            <div id="saved-routes-list">
+                <label for="routes-select">Cargar Ruta Guardada:</label>
+                <select id="routes-select">
+                    <option value="">Seleccionar Ruta</option>
+                    <!-- Opciones de rutas guardadas se agregarán aquí -->
+                </select>
+                <button id="load-route-button">Cargar Ruta</button>
+            </div>
         </div>
     </div>
-    <script src="script.js"></script>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const stopNameSpan = document.getElementById('next-stop-name');
+        const scheduledTimeSpan = document.getElementById('scheduled-time');
+        const timeDifferenceDiv = document.getElementById('time-difference');
+        const errorMessageDiv = document.getElementById('error-message');
+        const stopsContainer = document.getElementById('stops-container');
+        const addStopButton = document.getElementById('add-stop-button');
+        const saveRouteButton = document.getElementById('save-route-button');
+        const routesSelect = document.getElementById('routes-select');
+        const loadRouteButton = document.getElementById('load-route-button');
+
+        let busSchedule = []; // Inicialmente vacío, se llenará por el usuario
+        let currentStopIndex = 0;
+
+        // **Funciones para la gestión de rutas**
+        function addStopInput() {
+            const stopIndex = stopsContainer.children.length; // Usa la cantidad actual de hijos como índice
+            const stopDiv = document.createElement('div');
+            stopDiv.classList.add('stop-input-group');
+            stopDiv.innerHTML = `
+                <label for="stop-name-${stopIndex}">Nombre Parada:</label>
+                <input type="text" id="stop-name-${stopIndex}" placeholder="Ej: Parada ${stopIndex + 1}" required>
+                <label for="stop-lat-${stopIndex}">Latitud:</label>
+                <input type="number" id="stop-lat-${stopIndex}" placeholder="Latitud" step="any" required>
+                <label for="stop-lon-${stopIndex}">Longitud:</label>
+                <input type="number" id="stop-lon-${stopIndex}" placeholder="Longitud" step="any" required>
+                <label for="scheduled-time-${stopIndex}">Hora (HH:MM):</label>
+                <input type="time" id="scheduled-time-${stopIndex}" required>
+            `;
+            stopsContainer.appendChild(stopDiv);
+        }
+
+        function collectRouteData() {
+            busSchedule = []; // Limpia el horario actual antes de recopilar nuevos datos
+            for (let i = 0; i < stopsContainer.children.length; i++) {
+                const stopDiv = stopsContainer.children[i];
+                const stopName = stopDiv.querySelector(`#stop-name-${i}`).value;
+                const latitude = parseFloat(stopDiv.querySelector(`#stop-lat-${i}`).value);
+                const longitude = parseFloat(stopDiv.querySelector(`#stop-lon-${i}`).value);
+                const scheduledTime = stopDiv.querySelector(`#scheduled-time-${i}`).value;
+
+                if (stopName && !isNaN(latitude) && !isNaN(longitude) && scheduledTime) {
+                    busSchedule.push({
+                        stopName: stopName,
+                        latitude: latitude,
+                        longitude: longitude,
+                        scheduledTime: scheduledTime
+                    });
+                } else {
+                    alert("Por favor, completa todos los campos para todas las paradas.");
+                    return null; // Indica que la recopilación falló
+                }
+            }
+            return busSchedule;
+        }
+
+        function saveRoute() {
+            const routeData = collectRouteData();
+            if (routeData) {
+                const routeName = prompt("Introduce un nombre para guardar esta ruta:");
+                if (routeName) {
+                    const savedRoutes = JSON.parse(localStorage.getItem('busRoutes') || '{}');
+                    savedRoutes[routeName] = routeData;
+                    localStorage.setItem('busRoutes', JSON.stringify(savedRoutes));
+                    populateSavedRoutesDropdown(); // Actualiza el dropdown
+                    alert(`Ruta "${routeName}" guardada.`);
+                }
+            }
+        }
+
+        function loadRoute() {
+            const selectedRouteName = routesSelect.value;
+            if (selectedRouteName) {
+                const savedRoutes = JSON.parse(localStorage.getItem('busRoutes') || '{}');
+                const loadedRoute = savedRoutes[selectedRouteName];
+                if (loadedRoute) {
+                    busSchedule = loadedRoute;
+                    stopsContainer.innerHTML = ''; // Limpia inputs anteriores
+                    busSchedule.forEach((stop, index) => {
+                        addStopInput(); // Añade estructura input vacía
+                        const stopDiv = stopsContainer.children[index];
+                        stopDiv.querySelector(`#stop-name-${index}`).value = stop.stopName;
+                        stopDiv.querySelector(`#stop-lat-${index}`).value = stop.latitude;
+                        stopDiv.querySelector(`#stop-lon-${index}`).value = stop.longitude;
+                        stopDiv.querySelector(`#scheduled-time-${index}`).value = stop.scheduledTime;
+                    });
+                    currentStopIndex = 0; // Reinicia el índice de parada
+                    updateDisplay(); // Actualiza la visualización con la nueva ruta
+                    alert(`Ruta "${selectedRouteName}" cargada.`);
+                }
+            } else {
+                alert("Selecciona una ruta para cargar.");
+            }
+        }
+
+        function populateSavedRoutesDropdown() {
+            routesSelect.innerHTML = '<option value="">Seleccionar Ruta</option>'; // Limpia y añade la opción por defecto
+            const savedRoutes = JSON.parse(localStorage.getItem('busRoutes') || '{}');
+            Object.keys(savedRoutes).forEach(routeName => {
+                const option = document.createElement('option');
+                option.value = routeName;
+                option.textContent = routeName;
+                routesSelect.appendChild(option);
+            });
+        }
+
+
+        // **Funciones GPS y Cálculo de Tiempo (sin cambios importantes desde la versión anterior)**
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(showPosition, showError, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 30000
+                });
+            } else {
+                statusDiv.textContent = "Geolocalización no soportada por este navegador.";
+            }
+        }
+
+        function showPosition(position) {
+            statusDiv.textContent = "GPS Activo";
+            errorMessageDiv.style.display = 'none';
+
+            const currentLatitude = position.coords.latitude;
+            const currentLongitude = position.coords.longitude;
+            // console.log("Latitud: " + currentLatitude + ", Longitud: " + currentLongitude); // Para depuración
+
+            updateDisplay();
+        }
+
+        function showError(error) {
+            errorMessageDiv.style.display = 'block';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessageDiv.textContent = "Permiso de geolocalización denegado.";
+                    statusDiv.textContent = "Permiso GPS denegado.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessageDiv.textContent = "Información de ubicación no disponible.";
+                    statusDiv.textContent = "GPS no disponible.";
+                    break;
+                case error.TIMEOUT:
+                    errorMessageDiv.textContent = "Tiempo de espera agotado para obtener la ubicación.";
+                    statusDiv.textContent = "Timeout GPS.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    errorMessageDiv.textContent = "Error desconocido de geolocalización.";
+                    statusDiv.textContent = "Error GPS desconocido.";
+                    break;
+            }
+        }
+
+        function updateDisplay() {
+            if (currentStopIndex < busSchedule.length) {
+                const currentStop = busSchedule[currentStopIndex];
+                stopNameSpan.textContent = currentStop.stopName;
+                scheduledTimeSpan.textContent = currentStop.scheduledTime;
+
+                const scheduledTime = parseScheduledTime(currentStop.scheduledTime);
+                const currentTime = new Date();
+                const timeDifference = calculateTimeDifference(scheduledTime, currentTime);
+                displayTimeDifference(timeDifference);
+
+                // **Lógica para avanzar a la siguiente parada (SIMPLIFICADA)** -  En una app real, esto sería basado en GPS y distancia a la parada.
+                // Simulación de avance basado en tiempo para este ejemplo:
+                // En un uso real,  se usaría la ubicación GPS y la proximidad a las coordenadas de la parada.
+
+            } else if (busSchedule.length > 0) { // Solo muestra "Ruta Completa" si hay paradas definidas
+                stopNameSpan.textContent = "Fin de Ruta";
+                scheduledTimeSpan.textContent = "---";
+                timeDifferenceDiv.textContent = "¡Ruta Completa!";
+                timeDifferenceDiv.className = 'on-time';
+                statusDiv.textContent = "Ruta finalizada.";
+            } else {
+                stopNameSpan.textContent = "No hay ruta cargada";
+                scheduledTimeSpan.textContent = "---";
+                timeDifferenceDiv.textContent = "--:--";
+                timeDifferenceDiv.className = 'on-time';
+                statusDiv.textContent = "Define o carga una ruta.";
+            }
+        }
+
+        function parseScheduledTime(timeString) {
+            const [hours, minutes] = timeString.split(':').map(Number);
+            const now = new Date();
+            const scheduledDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+            return scheduledDate;
+        }
+
+        function calculateTimeDifference(scheduledTime, currentTime) {
+            const differenceInMilliseconds = scheduledTime - currentTime;
+            const differenceInSeconds = Math.round(differenceInMilliseconds / 1000);
+            return differenceInSeconds;
+        }
+
+        function displayTimeDifference(differenceInSeconds) {
+            const absoluteDifferenceSeconds = Math.abs(differenceInSeconds);
+            const minutes = Math.floor(absoluteDifferenceSeconds / 60);
+            const seconds = absoluteDifferenceSeconds % 60;
+            const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            if (differenceInSeconds > 0) {
+                timeDifferenceDiv.textContent = `+${formattedTime}`;
+                timeDifferenceDiv.className = 'ahead';
+            } else if (differenceInSeconds < 0) {
+                timeDifferenceDiv.textContent = `-${formattedTime}`;
+                timeDifferenceDiv.className = 'behind';
+            } else {
+                timeDifferenceDiv.textContent = formattedTime;
+                timeDifferenceDiv.className = 'on-time';
+            }
+        }
+
+
+        // **Event Listeners y Inicialización**
+        addStopButton.addEventListener('click', addStopInput);
+        saveRouteButton.addEventListener('click', saveRoute);
+        loadRouteButton.addEventListener('click', loadRoute);
+
+        populateSavedRoutesDropdown(); // Carga las rutas guardadas al inicio
+        getLocation(); // Inicia el GPS al cargar la página
+        updateDisplay(); // Actualiza la pantalla inicialmente
+        addStopInput(); // Añade al menos un input de parada al inicio
+    </script>
 </body>
 </html>
