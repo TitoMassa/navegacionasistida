@@ -8,27 +8,42 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
-            color: #333;
+            background-color: #f8f9fa;
+            color: #343a40;
         }
         #map {
-            height: 400px;
+            height: 450px;
             width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
         .container {
-            padding: 10px;
+            padding: 20px;
             text-align: center;
         }
-        .info {
-            margin-top: 10px;
-            font-size: 18px;
+        h1, h2 {
+            color: #28a745;
+        }
+        .info, .stop-entry, .route-actions {
+            background-color: #fff;
+            border: 1px solid #ced4da;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .info div, .stop-list li {
+            margin-bottom: 10px;
+            font-size: 1rem;
         }
         .time-diff {
-            font-size: 24px;
+            font-size: 1.5rem;
             font-weight: bold;
+            margin-top: 10px;
         }
         .time-diff.ahead {
             color: green;
@@ -41,39 +56,188 @@
             padding: 0;
         }
         .stop-list li {
-            background-color: #fff;
-            border: 1px solid #ddd;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
             margin-bottom: 5px;
             padding: 10px;
             border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stop-list li button {
+            margin-left: 10px;
+        }
+        .btn, button {
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover, button:hover {
+            background-color: #218838;
         }
         .hidden {
             display: none;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .input-group input {
+            width: calc(100% - 22px);
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-modal:hover,
+        .close-modal:focus {
+            color: black;
+            text-decoration: none;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input[type="text"], .form-group input[type="time"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .form-group button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .form-group button:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Smart Move</h1>
+
+        <!-- Mapa -->
         <div id="map"></div>
+
+        <!-- Información de la próxima parada -->
         <div class="info">
             <div>Próxima parada: <span id="next-stop-name">Ninguna</span></div>
             <div>Hora programada de llegada: <span id="next-stop-arrival-time">--:--</span></div>
             <div>Hora programada de salida: <span id="next-stop-departure-time">--:--</span></div>
             <div class="time-diff" id="time-difference">00:00</div>
-            <button id="skip-stop">Saltar Parada</button>
-            <button id="prev-stop" class="hidden">Parada Anterior</button>
+            <button id="skip-stop" class="btn">Saltar Parada</button>
+            <button id="prev-stop" class="btn hidden">Parada Anterior</button>
         </div>
-        <h2>Rutas Creadas</h2>
-        <ul id="saved-routes-list" class="stop-list"></ul>
-        <h2>Paradas de la Ruta</h2>
-        <ul id="stops-list" class="stop-list"></ul>
-        <button onclick="saveRoute()">Guardar Ruta</button>
-        <button onclick="startNavigation()" id="start-navigation" disabled>Iniciar Navegación</button>
+
+        <!-- Botones para gestionar rutas -->
+        <div class="route-actions">
+            <button onclick="openAddStopModal()" class="btn">Agregar Parada</button>
+            <button onclick="openSaveRouteModal()" class="btn">Guardar Ruta</button>
+            <button onclick="startNavigation()" id="start-navigation" class="btn" disabled>Iniciar Navegación</button>
+        </div>
+
+        <!-- Lista de paradas de la ruta actual -->
+        <div class="stop-entry">
+            <h2>Paradas de la Ruta Actual</h2>
+            <ul id="stops-list" class="stop-list"></ul>
+        </div>
+
+        <!-- Lista de rutas guardadas -->
+        <div class="stop-entry">
+            <h2>Rutas Guardadas</h2>
+            <ul id="saved-routes-list" class="stop-list"></ul>
+        </div>
+
+        <!-- Modal para agregar parada -->
+        <div id="addStopModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeAddStopModal()">×</span>
+                <h2>Agregar Parada</h2>
+                <div class="form-group">
+                    <label for="stopName">Nombre de la Parada:</label>
+                    <input type="text" id="stopName" placeholder="Ingrese nombre">
+                </div>
+                <div class="form-group">
+                    <label for="arrivalTime">Hora de Llegada (HH:MM):</label>
+                    <input type="time" id="arrivalTime">
+                </div>
+                <div class="form-group">
+                    <label for="departureTime">Hora de Salida (HH:MM):</label>
+                    <input type="time" id="departureTime">
+                </div>
+                <div class="form-group">
+                    <button onclick="addStop()">Agregar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para guardar ruta -->
+        <div id="saveRouteModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeSaveRouteModal()">×</span>
+                <h2>Guardar Ruta</h2>
+                <div class="form-group">
+                    <label for="routeName">Nombre de la Ruta:</label>
+                    <input type="text" id="routeName" placeholder="Ingrese nombre">
+                </div>
+                <div class="form-group">
+                    <button onclick="saveRoute()">Guardar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        let map = L.map('map').setView([0, 0], 13); // Inicializar el mapa
+        let map = L.map('map').setView([0, 0], 13);
         let currentRoute = [];
         let currentPositionMarker = null;
         let nextStopIndex = 0;
@@ -81,19 +245,27 @@
         let savedRoutes = [];
         let navigationRoute = null;
         let markers = [];
+        let addingStop = false;
+        let selectedLatLng = null;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Obtener la posición actual y actualizarla
+        map.on('click', function(e) {
+            if (addingStop) {
+                selectedLatLng = e.latlng;
+                document.getElementById('addStopModal').style.display = 'block';
+                addingStop = false;
+            }
+        });
+
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(showPosition, showError, { enableHighAccuracy: true });
         } else {
             alert("La geolocalización no está soportada por este navegador.");
         }
 
-        // Cargar rutas guardadas del localStorage
         loadSavedRoutes();
 
         function showPosition(position) {
@@ -130,40 +302,122 @@
             }
         }
 
-        map.on('click', function(e) {
-            let stopName = prompt("Nombre de la parada:");
-            if (stopName === null || stopName.trim() === "") return;
+        function openAddStopModal() {
+            addingStop = true;
+            alert("Haz clic en el mapa para seleccionar la ubicación de la parada.");
+        }
 
-            let arrivalTime = prompt("Hora programada de llegada (HH:MM):");
-            if (arrivalTime === null || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(arrivalTime)) {
-                alert("Formato de hora de llegada inválido. Debe ser HH:MM.");
+        function closeAddStopModal() {
+            document.getElementById('addStopModal').style.display = 'none';
+            addingStop = false;
+        }
+
+        function addStop() {
+            if (!selectedLatLng) {
+                alert("Primero selecciona una ubicación en el mapa.");
                 return;
             }
 
-            let departureTime = prompt("Hora programada de salida (HH:MM):");
-            if (departureTime === null || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(departureTime)) {
-                alert("Formato de hora de salida inválido. Debe ser HH:MM.");
+            let stopName = document.getElementById('stopName').value;
+            let arrivalTime = document.getElementById('arrivalTime').value;
+            let departureTime = document.getElementById('departureTime').value;
+
+            if (!stopName || !arrivalTime || !departureTime) {
+                alert("Por favor, completa todos los campos.");
                 return;
             }
 
-            let marker = L.marker(e.latlng).addTo(map);
+            let marker = L.marker(selectedLatLng).addTo(map);
             markers.push(marker);
             currentRoute.push({
                 name: stopName,
                 arrivalTime: arrivalTime,
                 departureTime: departureTime,
-                latlng: e.latlng
+                latlng: selectedLatLng
             });
 
             updateStopsList();
-        });
+            closeAddStopModal();
+            resetAddStopForm();
+        }
+
+        function resetAddStopForm() {
+            document.getElementById('stopName').value = '';
+            document.getElementById('arrivalTime').value = '';
+            document.getElementById('departureTime').value = '';
+            selectedLatLng = null;
+        }
+
+        function openSaveRouteModal() {
+            document.getElementById('saveRouteModal').style.display = 'block';
+        }
+
+        function closeSaveRouteModal() {
+            document.getElementById('saveRouteModal').style.display = 'none';
+        }
+
+        function saveRoute() {
+            let routeName = document.getElementById('routeName').value;
+            if (!routeName) {
+                alert("Por favor, ingresa un nombre para la ruta.");
+                return;
+            }
+
+            savedRoutes.push({ name: routeName, stops: currentRoute });
+            localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
+            updateSavedRoutesList();
+            closeSaveRouteModal();
+            clearCurrentRoute();
+        }
+
+        function loadSavedRoutes() {
+            let storedRoutes = localStorage.getItem('savedRoutes');
+            if (storedRoutes) {
+                savedRoutes = JSON.parse(storedRoutes);
+            }
+            updateSavedRoutesList();
+        }
+
+        function updateSavedRoutesList() {
+            const routesList = document.getElementById('saved-routes-list');
+            routesList.innerHTML = '';
+            savedRoutes.forEach((route, index) => {
+                let li = document.createElement('li');
+                li.innerHTML = `${route.name} <button onclick="loadRoute(${index})" class="btn">Cargar</button> <button onclick="deleteRoute(${index})" class="btn">Eliminar</button>`;
+                routesList.appendChild(li);
+            });
+        }
+
+        function loadRoute(index) {
+            clearCurrentRoute();
+            currentRoute = savedRoutes[index].stops.map(stop => ({ ...stop }));
+            markers = [];
+            currentRoute.forEach(stop => {
+                let marker = L.marker(stop.latlng).addTo(map);
+                markers.push(marker);
+            });
+            updateStopsList();
+        }
+
+        function deleteRoute(index) {
+            savedRoutes.splice(index, 1);
+            localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
+            updateSavedRoutesList();
+        }
+
+        function clearCurrentRoute() {
+            currentRoute = [];
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            updateStopsList();
+        }
 
         function updateStopsList() {
             const stopsList = document.getElementById('stops-list');
             stopsList.innerHTML = '';
             currentRoute.forEach((stop, index) => {
                 let li = document.createElement('li');
-                li.innerHTML = `${stop.name} - Llegada: ${stop.arrivalTime}, Salida: ${stop.departureTime} <button onclick="editStop(${index})">Editar</button> <button onclick="deleteStop(${index})">Eliminar</button>`;
+                li.innerHTML = `${stop.name} - Llegada: ${stop.arrivalTime}, Salida: ${stop.departureTime} <button onclick="editStop(${index})" class="btn">Editar</button> <button onclick="deleteStop(${index})" class="btn">Eliminar</button>`;
                 stopsList.appendChild(li);
             });
             document.getElementById('start-navigation').disabled = currentRoute.length === 0;
@@ -196,58 +450,6 @@
             map.removeLayer(markers[index]);
             markers.splice(index, 1);
             currentRoute.splice(index, 1);
-            updateStopsList();
-        }
-
-        function saveRoute() {
-            let routeName = prompt("Nombre de la ruta:");
-            if (routeName === null || routeName.trim() === "") return;
-
-            savedRoutes.push({ name: routeName, stops: currentRoute });
-            localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
-            updateSavedRoutesList();
-            clearCurrentRoute();
-        }
-
-        function loadSavedRoutes() {
-            let storedRoutes = localStorage.getItem('savedRoutes');
-            if (storedRoutes) {
-                savedRoutes = JSON.parse(storedRoutes);
-            }
-            updateSavedRoutesList();
-        }
-
-        function updateSavedRoutesList() {
-            const routesList = document.getElementById('saved-routes-list');
-            routesList.innerHTML = '';
-            savedRoutes.forEach((route, index) => {
-                let li = document.createElement('li');
-                li.innerHTML = `${route.name} <button onclick="loadRoute(${index})">Cargar</button> <button onclick="deleteRoute(${index})">Eliminar</button>`;
-                routesList.appendChild(li);
-            });
-        }
-
-        function loadRoute(index) {
-            clearCurrentRoute();
-            currentRoute = savedRoutes[index].stops.map(stop => ({ ...stop }));
-            markers = []; // Limpiar los marcadores actuales
-            currentRoute.forEach(stop => {
-                let marker = L.marker(stop.latlng).addTo(map);
-                markers.push(marker);
-            });
-            updateStopsList();
-        }
-
-        function deleteRoute(index) {
-            savedRoutes.splice(index, 1);
-            localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
-            updateSavedRoutesList();
-        }
-
-        function clearCurrentRoute() {
-            currentRoute = [];
-            markers.forEach(marker => map.removeLayer(marker));
-            markers = [];
             updateStopsList();
         }
 
@@ -331,32 +533,4 @@
         }
 
         document.getElementById('skip-stop').addEventListener('click', function() {
-            if (nextStopIndex < navigationRoute.length - 1) {
-                nextStopIndex++;
-                updateNextStopInfo();
-                updateTimeDifference();
-                if (nextStopIndex > 0) {
-                    document.getElementById('prev-stop').classList.remove('hidden');
-                }
-                if (nextStopIndex === navigationRoute.length - 1) {
-                    document.getElementById('skip-stop').classList.add('hidden');
-                }
-            }
-        });
-
-        document.getElementById('prev-stop').addEventListener('click', function() {
-            if (nextStopIndex > 0) {
-                nextStopIndex--;
-                updateNextStopInfo();
-                updateTimeDifference();
-                if (nextStopIndex < navigationRoute.length - 1) {
-                    document.getElementById('skip-stop').classList.remove('hidden');
-                }
-                if (nextStopIndex === 0) {
-                    document.getElementById('prev-stop').classList.add('hidden');
-                }
-            }
-        });
-    </script>
-</body>
-</html>
+            if (next
