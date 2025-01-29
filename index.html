@@ -150,7 +150,7 @@
     <div id="main-container">
         <div id="navigation-page">
             <h2>Navegación</h2>
-            <button id="creator-button">Crear Paradas</button>
+            <button id="creator-button">Crear Ruta</button>  <!-- Botón "Crear Ruta" -->
 
             <label for="route-select">Seleccionar Ruta:</label>
             <select id="route-select">
@@ -173,7 +173,7 @@
         </div>
 
         <div id="creator-page" style="display: none;">
-            <h2>Creador de Paradas</h2>
+            <h2>Creador de Ruta</h2>  <!-- Título "Creador de Ruta" -->
             <div id="map"></div>
             <div id="stop-form">
                 <input type="text" id="stop-name" placeholder="Nombre de la Parada">
@@ -524,6 +524,4 @@
 
         // --- Manual Navigation Control ---
         function skipToNextStop() {
-            if (currentRouteStopsForNavigation.length > 0 && nextStopIndex < currentRouteStopsForNavigation.length - 1) {
-                nextStopIndex++;
-           
+            if (currentRouteStopsForNavigation.length > 0 && nextStopIndex < currentRouteStopsForNavigation.
