@@ -118,3 +118,19 @@ function calculateTimeDifference(lat, lon) {
 
 document.getElementById("start-navigation").addEventListener("click", startNavigation);
 document.getElementById("stop-navigation").addEventListener("click", stopNavigation);
+document.getElementById("delete-route").addEventListener("click", function () {
+    let routeSelector = document.getElementById("route-selector");
+    let selectedIndex = routeSelector.value;
+
+    if (selectedIndex === "") {
+        alert("Selecciona una ruta para eliminar.");
+        return;
+    }
+
+    let storedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
+    storedRoutes.splice(selectedIndex, 1);
+    localStorage.setItem("routes", JSON.stringify(storedRoutes));
+
+    alert("Ruta eliminada.");
+    location.reload(); // Recargar la página para actualizar la lista de rutas
+});
