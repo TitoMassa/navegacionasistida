@@ -43,6 +43,7 @@ function loadRouteOnMap(route) {
 }
 
 function startNavigation() {
+let timeUpdateInterval = null;
     let storedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
     let selectedIndex = document.getElementById("route-selector").value;
     selectedRoute = storedRoutes[selectedIndex];
@@ -59,10 +60,13 @@ function startNavigation() {
             document.getElementById("location").textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
             marker.setLatLng([lat, lon]);
             map.setView([lat, lon], 15);
-            calculateTimeDifference(lat, lon);
         }, error => {
             console.error("Error obteniendo ubicación:", error);
         }, { enableHighAccuracy: true, maximumAge: 0 });
+
+        // Actualizar diferencia de tiempo cada 5 segundos
+        if (timeUpdateInterval) clearInterval(timeUpdateInterval);
+        timeUpdateInterval = setInterval(updateTimeDifference, 5000);
     } else {
         alert("Tu navegador no soporta geolocalización.");
     }
@@ -72,10 +76,23 @@ function stopNavigation() {
     if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
-        document.getElementById("time-difference").textContent = "";
     }
+    if (timeUpdateInterval !== null) {
+        clearInterval(timeUpdateInterval);
+        timeUpdateInterval = null;
+    }
+    document.getElementById("time-difference").textContent = "";
 }
 
+function updateTimeDifference() {
+    if (!selectedRoute) return;
+    
+    navigator.geolocation.getCurrentPosition(position => {
+        let lat = position.coords.latitude;
+        let lon = position.coords.longitude;
+        calculateTimeDifference(lat, lon);
+    });
+}
 function calculateTimeDifference(lat, lon) {
     let closestStop = null;
     let minDistance = Infinity;
