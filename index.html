@@ -29,7 +29,7 @@
             padding: 20px;
         }
 
-        #navigation-page, #creator-page {
+        #navigation-page {
             padding: 20px;
             border: 1px solid #ddd;
             margin-bottom: 20px;
@@ -41,7 +41,7 @@
             box-sizing: border-box;
         }
 
-        #navigation-page h2, #creator-page h2 {
+        #navigation-page h2 {
             text-align: center;
             color: #007bff;
         }
@@ -131,6 +131,13 @@
             font-size: 0.9em;
         }
 
+        #route-creator-container {
+            display: none; /* Initially hidden */
+            padding-top: 20px; /* Add some space above creator elements */
+            border-top: 1px solid #eee; /* Separator line */
+            margin-top: 20px;
+        }
+
 
         @media (max-width: 768px) {
             h1 {
@@ -138,7 +145,7 @@
                 padding: 15px 0;
             }
 
-            #navigation-page, #creator-page {
+            #navigation-page {
                 padding: 15px;
                 margin-bottom: 15px;
                 width: 98%;
@@ -165,6 +172,20 @@
             <h2>Navegación</h2>
             <button id="creator-button">Crear Ruta</button>
 
+            <div id="route-creator-container">
+                <h3>Creador de Ruta</h3>
+                <div id="map"></div>
+                <div id="stop-form">
+                    <input type="text" id="stop-name" placeholder="Nombre de la Parada">
+                    <input type="time" id="scheduled-time-arrival" placeholder="Horario de Llegada (HH:MM)">
+                    <input type="time" id="scheduled-time-departure" placeholder="Horario de Salida (HH:MM) - Opcional">
+                    <button id="add-stop-button">Agregar Parada</button>
+                </div>
+                <ul id="stop-list"></ul>
+                <button id="save-route-button">Guardar Ruta</button>
+                <button id="cancel-route-creation-button">Cancelar Creación de Ruta</button>
+            </div>
+
             <label for="route-select">Seleccionar Ruta:</label>
             <select id="route-select">
                 <option value="">-- Seleccionar Ruta --</option>
@@ -184,27 +205,13 @@
                 <button id="skip-stop-button">Saltar Parada</button>
             </div>
         </div>
-
-        <div id="creator-page" style="display: none;">
-            <h2>Creador de Ruta</h2>
-            <div id="map"></div>
-            <div id="stop-form">
-                <input type="text" id="stop-name" placeholder="Nombre de la Parada">
-                <input type="time" id="scheduled-time-arrival" placeholder="Horario de Llegada (HH:MM)">
-                <input type="time" id="scheduled-time-departure" placeholder="Horario de Salida (HH:MM) - Opcional">
-                <button id="add-stop-button">Agregar Parada</button>
-            </div>
-            <ul id="stop-list"></ul>
-            <button id="save-route-button">Guardar Ruta</button>
-            <button id="back-to-navigation-button">Volver a Navegación</button>
-        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
         const creatorButton = document.getElementById('creator-button');
         const navigationPage = document.getElementById('navigation-page');
-        const creatorPage = document.getElementById('creator-page');
+        const routeCreatorContainer = document.getElementById('route-creator-container');
         const mapDiv = document.getElementById('map');
         const stopNameInput = document.getElementById('stop-name');
         const scheduledTimeArrivalInput = document.getElementById('scheduled-time-arrival');
@@ -212,7 +219,7 @@
         const addStopButton = document.getElementById('add-stop-button');
         const stopList = document.getElementById('stop-list');
         const saveRouteButton = document.getElementById('save-route-button');
-        const backToNavigationButton = document.getElementById('back-to-navigation-button');
+        const cancelRouteCreationButton = document.getElementById('cancel-route-creation-button');
         const routeSelect = document.getElementById('route-select');
         const deleteRouteButton = document.getElementById('delete-route-button');
         const timeDiffValueDisplay = document.getElementById('time-diff-value');
@@ -223,7 +230,7 @@
 
         let map;
         let stops = [];
-        let routeMarkers = []; // Array to store Leaflet markers for stops
+        let routeMarkers = [];
         let currentRouteName = '';
         let watchId;
         let currentRouteStopsForNavigation = [];
@@ -242,7 +249,7 @@
                 routes.push({ name: routeName, stops: stops });
                 localStorage.setItem('busRoutes', JSON.stringify(routes));
                 loadRoutes();
-                clearCreatorData(); // Clear stops and map markers after saving
+                clearCreatorData();
                 alert(`Ruta "${routeName}" guardada!`);
                 showNavigationPage();
             }
@@ -297,12 +304,11 @@
                 attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            map.on('click', onMapClick); // Use a named function for the event
+            map.on('click', onMapClick);
         }
 
         function onMapClick(e) {
             const latlng = e.latlng;
-            // Open popup directly to get stop details on map click
             L.popup()
                 .setLatLng(latlng)
                 .setContent(`
@@ -316,7 +322,6 @@
                 .openOn(map);
         }
 
-        // Function to be called from the popup to add a stop
         window.addStopFromPopup = function(lat, lng) {
             const popupContent = document.getElementById('popup-form');
             const stopName = popupContent.querySelector('#popup-stop-name').value.trim();
@@ -333,8 +338,8 @@
                 };
                 stops.push(newStop);
                 updateStopListDisplay();
-                addMarkerToMap(newStop); // Add marker immediately
-                map.closePopup(); // Close the popup after adding
+                addMarkerToMap(newStop);
+                map.closePopup();
             } else {
                 alert("Por favor, ingresa nombre y horario de llegada para la parada.");
             }
@@ -343,7 +348,7 @@
         function addMarkerToMap(stop) {
             const marker = L.marker([stop.lat, stop.lng])
                               .bindPopup(`${stop.name}<br>Llegada: ${stop.scheduledArrivalTime}`);
-            routeMarkers.push(marker); // Store marker for clearing later
+            routeMarkers.push(marker);
             marker.addTo(map);
         }
 
@@ -368,23 +373,20 @@
         }
 
         function editStop(index) {
-            // Implement edit functionality if needed, e.g., populate form with stop data
             alert('Función de edición no implementada en este ejemplo. Index de parada: ' + index);
         }
 
         function deleteStop(index) {
             stops.splice(index, 1);
-            // Remove marker from map and routeMarkers array
             if (routeMarkers[index]) {
                 map.removeLayer(routeMarkers[index]);
-                routeMarkers.splice(index, 1); // Also remove from the array to keep in sync
+                routeMarkers.splice(index, 1);
             } else {
-                // If marker not found at index, try to find and remove based on stop coordinates (less efficient, but safer)
                 routeMarkers.forEach((marker, markerIndex) => {
                     if (marker && marker.getLatLng().lat === stops[index].lat && marker.getLatLng().lng === stops[index].lng) {
                         map.removeLayer(marker);
                         routeMarkers.splice(markerIndex, 1);
-                        return; // Exit after finding and removing the first matching marker
+                        return;
                     }
                 });
             }
@@ -395,7 +397,6 @@
         function clearCreatorData() {
             stops = [];
             stopList.innerHTML = '';
-            // Clear all markers from the map and reset routeMarkers array
             routeMarkers.forEach(marker => map.removeLayer(marker));
             routeMarkers = [];
         }
@@ -412,7 +413,6 @@
             function success(position) {
                 currentLatitude = position.coords.latitude;
                 currentLongitude = position.coords.longitude;
-                // Actualizar la navegación inmediatamente al obtener la ubicación inicial
                 updateNavigationDisplay(currentLatitude, currentLongitude);
             }
 
@@ -428,7 +428,6 @@
 
             watchId = navigator.geolocation.watchPosition(success, error, options);
 
-            // Mantener la actualización de la navegación cada 5 segundos para reflejar cambios
             timeDifferenceInterval = setInterval(function() {
                 if (currentLatitude !== undefined && currentLongitude !== undefined && currentRouteStopsForNavigation && currentRouteStopsForNavigation.length > 0) {
                     updateNavigationDisplay(currentLatitude, currentLongitude);
@@ -449,7 +448,7 @@
                 timeDiffValueDisplay.textContent = "Obteniendo ubicación...";
                 nextStopNameDisplay.textContent = "--";
                 nextStopTimeDisplay.textContent = "--:--";
-                return; // No continuar si no hay ubicación
+                return;
             }
 
             if (currentRouteStopsForNavigation.length > 0) {
@@ -511,4 +510,20 @@
 
 
         function calculateTimeDifference(stop) {
-            if (!stop || !stop.scheduledArriv
+            if (!stop || !stop.scheduledArrivalTime || currentLatitude === undefined || currentLongitude === undefined) {
+                timeDiffValueDisplay.textContent = "--:--";
+                return;
+            }
+
+            const scheduledTimeStr = stop.scheduledArrivalTime;
+            const scheduledTimeParts = scheduledTimeStr.split(':');
+            const scheduledHour = parseInt(scheduledTimeParts[0]);
+            const scheduledMinute = parseInt(scheduledTimeParts[1]);
+
+            const scheduledDate = new Date();
+            scheduledDate.setHours(scheduledHour, scheduledMinute, 0, 0);
+
+            const now = new Date();
+            const timeDiffMs = scheduledDate.getTime() - now.getTime();
+            const timeDiffSeconds = Math.round(timeDiffMs / 1000);
+            
