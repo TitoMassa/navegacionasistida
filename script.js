@@ -104,43 +104,51 @@ function updateTimeDifference() {
     });
 }
 function calculateTimeDifference(lat, lon) {
+function calculateTimeDifference(lat, lon) {
     let closestStop = null;
     let minDistance = Infinity;
-
+    
+    // Encuentra la parada más cercana
     selectedRoute.stops.forEach(stop => {
-        let distance = Math.hypot(lat - stop.lat, lon - stop.lon);
+        let stopLat = stop.lat;
+        let stopLon = stop.lon;
+        let stopTime = new Date(stop.time);
+        
+        // Calcular distancia entre la posición actual y la parada
+        let distance = haversine(lat, lon, stopLat, stopLon);  // Función haversine para calcular la distancia
+        
         if (distance < minDistance) {
-            minDistance = distance;
             closestStop = stop;
+            minDistance = distance;
         }
     });
 
-    if (!closestStop) return;
+    if (closestStop) {
+        let now = new Date();
+        let stopTime = new Date(closestStop.time);
+        
+        // Calcula la diferencia de tiempo en milisegundos
+        let timeDiff = now - stopTime;
+        let minutes = Math.floor(timeDiff / 60000); // Convierte a minutos
+        let seconds = Math.floor((timeDiff % 60000) / 1000); // Convierte el resto a segundos
 
-    let now = new Date();
-    let stopTime = new Date();
-    let [hours, minutes, seconds] = closestStop.time.split(":").map(Number);
-    stopTime.setHours(hours, minutes, seconds);
+        // Ajusta la diferencia para que siempre tenga el signo correcto
+        let timeDifference = `${minutes < 10 ? "0" : ""}${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+        
+        // Muestra la diferencia con el signo correcto
+        if (timeDiff < 0) {
+            timeDifference = `-${timeDifference}`; // Atrasado
+            document.getElementById("time-difference").style.color = "red"; // Rojo si está atrasado
+        } else if (timeDiff > 0) {
+            timeDifference = `+${timeDifference}`; // Adelantado
+            document.getElementById("time-difference").style.color = "blue"; // Azul si está adelantado
+        } else {
+            timeDifference = `+00:00`; // En horario
+            document.getElementById("time-difference").style.color = "green"; // Verde si está a tiempo
+        }
 
-    let timeDiff = Math.floor((now - stopTime) / 1000);
-    let minutesDiff = Math.floor(Math.abs(timeDiff) / 60).toString().padStart(2, '0');
-    let secondsDiff = (Math.abs(timeDiff) % 60).toString().padStart(2, '0');
-
-    let sign = timeDiff < 0 ? "-" : "+";
-    let formattedTime = `${sign}${minutesDiff}:${secondsDiff}`;
-    let timeDifferenceElement = document.getElementById("time-difference");
-
-    // Aplicar colores según el tiempo de diferencia
-    let totalDiffInSeconds = Math.abs(timeDiff);
-    if (totalDiffInSeconds > 120) {
-        timeDifferenceElement.style.color = timeDiff < 0 ? "red" : "blue";
-    } else {
-        timeDifferenceElement.style.color = "green";
+        document.getElementById("time-difference").textContent = timeDifference;
     }
-
-    timeDifferenceElement.style.fontSize = "24px";
-    timeDifferenceElement.style.fontWeight = "bold";
-    timeDifferenceElement.textContent = formattedTime;
 }
 
 document.getElementById("start-navigation").addEventListener("click", startNavigation);
