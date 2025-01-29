@@ -13,21 +13,36 @@ function haversine(lat1, lon1, lat2, lon2) {
 
 // Función para obtener la ubicación actual del usuario
 function getCurrentLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            calculateTimeDifference(lat, lon);  // Llamamos a la función para calcular la diferencia de tiempo
-        }, function(error) {
-            console.error("Error obteniendo la ubicación: " + error.message);
-        });
-    } else {
-        console.log("Geolocalización no es soportada por este navegador.");
-    }
+    return new Promise((resolve, reject) => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                resolve({ lat, lon });  // Devuelve la latitud y longitud
+            }, function(error) {
+                reject("Error obteniendo la ubicación: " + error.message);
+            });
+        } else {
+            reject("Geolocalización no es soportada por este navegador.");
+        }
+    });
 }
 
 // Función para calcular la diferencia de tiempo entre la posición del usuario y la parada más cercana
-function calculateTimeDifference(lat, lon) {
+async function calculateTimeDifference() {
+    let lat, lon;
+
+    try {
+        // Obtener ubicación del usuario
+        const location = await getCurrentLocation();
+        lat = location.lat;
+        lon = location.lon;
+    } catch (error) {
+        console.error(error);
+        document.getElementById("time-difference").textContent = "Error al obtener ubicación";
+        return;
+    }
+
     let closestStop = null;
     let minDistance = Infinity;
 
@@ -55,6 +70,7 @@ function calculateTimeDifference(lat, lon) {
     // Si no encontramos ninguna parada válida, mostramos un error
     if (!closestStop) {
         console.error("No se pudo encontrar la parada más cercana.");
+        document.getElementById("time-difference").textContent = "No se pudo encontrar la parada más cercana.";
         return;
     }
 
@@ -109,8 +125,22 @@ function displayRoutes() {
     });
 }
 
+// Función para cargar una ruta en el mapa
+function loadRouteOnMap(routeIndex) {
+    const route = selectedRoutes[routeIndex];
+    route.stops.forEach(stop => {
+        // Añadir marcador para cada parada
+        const latLng = new google.maps.LatLng(stop.lat, stop.lon);
+        new google.maps.Marker({
+            position: latLng,
+            map: map,
+            title: `Parada: ${stop.name}, Hora: ${stop.time}`
+        });
+    });
+}
+
 // Función para iniciar la navegación con la ruta seleccionada
-function startNavigation() {
+async function startNavigation() {
     const routeSelector = document.getElementById('route-selector');
     const routeIndex = routeSelector.value;
 
@@ -118,9 +148,12 @@ function startNavigation() {
         selectedRoute = selectedRoutes[routeIndex];
         document.getElementById("start-button").disabled = true; // Desactivar el botón para evitar reiniciar la navegación
 
+        // Mostrar las paradas en el mapa
+        loadRouteOnMap(routeIndex);
+
         // Iniciar cálculo de la diferencia de tiempo cada 5 segundos
-        setInterval(() => {
-            getCurrentLocation(); // Obtener la ubicación y calcular la diferencia de tiempo
+        navigationInterval = setInterval(() => {
+            calculateTimeDifference(); // Obtener la ubicación y calcular la diferencia de tiempo
         }, 5000);
     }
 }
