@@ -5,30 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Move</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+
+    <!-- Cargar la hoja de estilos de Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- Cargar la librería de Leaflet -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body>
-    <h1>Smart Move - Logística de Autobuses</h1>
-    
-    <button onclick="window.location.href='rutas.html'">Crear Ruta</button>
-    
-    <h2>Seleccionar Ruta:</h2>
-    <label for="route-selector">Seleccionar Ruta:</label>
-<div class="custom-dropdown">
-    <select id="route-selector">
-        <option value="">Cargando rutas...</option>
-    </select>
-</div>
-<button id="delete-route">Eliminar ruta</button>
-    
-    <button id="start-navigation">Iniciar Navegación</button>
-    <button id="stop-navigation">Detener Navegación</button>
-    
-    <div id="map"></div>
-    <p>Ubicación actual: <span id="location">Obteniendo...</span></p>
-    <p>Diferencia de tiempo: <span id="time-difference">Calculando...</span></p>
+    <h1>Smart Move</h1>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="script.js"></script>
+    <div id="map" style="height: 500px; width: 100%;"></div>
+
+    <select id="route-selector"></select>
+    <button id="start-button">Iniciar Navegación</button>
+    <button id="stop-button">Detener Navegación</button>
+
+    <p id="time-difference">Calculando...</p>
 </body>
 </html>
