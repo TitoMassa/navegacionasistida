@@ -57,15 +57,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.getElementById("save-route").addEventListener("click", function () {
         let routeData = {
+            name: prompt("Nombre de la ruta:"),
             route: route.map(point => ({ lat: point.lat, lon: point.lng })),
             stops: stops
         };
 
-        console.log("Ruta guardada:", JSON.stringify(routeData, null, 2));
-        alert("Ruta guardada en la consola.");
+        let savedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
+        savedRoutes.push(routeData);
+        localStorage.setItem("routes", JSON.stringify(savedRoutes));
+
+        alert("Ruta guardada exitosamente.");
     });
 
-    // Ajustar tamaño del mapa después de que la página cargue completamente
     setTimeout(() => {
         map.invalidateSize();
     }, 500);
