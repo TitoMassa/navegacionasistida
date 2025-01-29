@@ -1,27 +1,290 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Move</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="script.js" defer></script>
-
-    <!-- Cargar la hoja de estilos de Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
-    <!-- Cargar la librería de Leaflet -->
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body { font-family: sans-serif; }
+        #main-container { display: flex; flex-direction: column; align-items: center; }
+        #navigation-page, #creator-page { padding: 20px; border: 1px solid #ccc; margin-bottom: 20px; }
+        #stop-list li { margin-bottom: 5px; }
+        #map { height: 300px; width: 100%; } /* Adjust map height as needed */
+    </style>
 </head>
 <body>
     <h1>Smart Move</h1>
 
-    <div id="map" style="height: 500px; width: 100%;"></div>
+    <div id="main-container">
+        <div id="navigation-page">
+            <h2>Navegación</h2>
+            <button id="creator-button">Crear Paradas</button>
 
-    <select id="route-selector"></select>
-    <button id="start-button">Iniciar Navegación</button>
-    <button id="stop-button">Detener Navegación</button>
+            <label for="route-select">Seleccionar Ruta:</label>
+            <select id="route-select">
+                <option value="">-- Seleccionar Ruta --</option>
+            </select>
+            <button id="delete-route-button">Eliminar Ruta</button>
 
-    <p id="time-difference">Calculando...</p>
+            <div id="time-difference">
+                Diferencia de Tiempo: <span id="time-diff-value">--:--</span>
+            </div>
+        </div>
+
+        <div id="creator-page" style="display: none;">
+            <h2>Creador de Paradas</h2>
+            <div id="map"></div>
+            <div id="stop-form">
+                <input type="text" id="stop-name" placeholder="Nombre de la Parada">
+                <input type="time" id="scheduled-time">
+                <button id="add-stop-button">Agregar Parada</button>
+            </div>
+            <ul id="stop-list"></ul>
+            <button id="save-route-button">Guardar Ruta</button>
+            <button id="back-to-navigation-button">Volver a Navegación</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const creatorButton = document.getElementById('creator-button');
+        const navigationPage = document.getElementById('navigation-page');
+        const creatorPage = document.getElementById('creator-page');
+        const mapDiv = document.getElementById('map');
+        const stopNameInput = document.getElementById('stop-name');
+        const scheduledTimeInput = document.getElementById('scheduled-time');
+        const addStopButton = document.getElementById('add-stop-button');
+        const stopList = document.getElementById('stop-list');
+        const saveRouteButton = document.getElementById('save-route-button');
+        const backToNavigationButton = document.getElementById('back-to-navigation-button');
+        const routeSelect = document.getElementById('route-select');
+        const deleteRouteButton = document.getElementById('delete-route-button');
+        const timeDiffValueDisplay = document.getElementById('time-diff-value');
+
+
+        let map;
+        let stops = []; // Array to store stops for the current route being created
+        let currentRouteName = ''; // For saving routes with names. (Not implemented in this basic version, but can be added)
+
+        // --- Route Management Functions ---
+        function saveRoute() {
+            const routeName = prompt("Nombre para guardar la ruta:");
+            if (routeName) {
+                const routes = JSON.parse(localStorage.getItem('busRoutes') || '[]');
+                routes.push({ name: routeName, stops: stops });
+                localStorage.setItem('busRoutes', JSON.stringify(routes));
+                loadRoutes(); // Update route dropdown
+                stops = []; // Clear current stops after saving
+                stopList.innerHTML = ''; // Clear stop list in creator
+                alert(`Ruta "${routeName}" guardada!`);
+                showNavigationPage(); // Go back to navigation after saving
+            }
+        }
+
+        function loadRoutes() {
+            routeSelect.innerHTML = '<option value="">-- Seleccionar Ruta --</option>'; // Reset dropdown
+            const routes = JSON.parse(localStorage.getItem('busRoutes') || '[]');
+            routes.forEach((route, index) => {
+                const option = document.createElement('option');
+                option.value = index; // Use index as value for simplicity
+                option.textContent = route.name;
+                routeSelect.appendChild(option);
+            });
+        }
+
+        function deleteRoute() {
+            const selectedRouteIndex = routeSelect.value;
+            if (selectedRouteIndex !== "") {
+                if (confirm("¿Seguro que quieres eliminar esta ruta?")) {
+                    const routes = JSON.parse(localStorage.getItem('busRoutes') || '[]');
+                    routes.splice(selectedRouteIndex, 1);
+                    localStorage.setItem('busRoutes', JSON.stringify(routes));
+                    loadRoutes(); // Refresh route list
+                    alert("Ruta eliminada.");
+                }
+            } else {
+                alert("Selecciona una ruta para eliminar.");
+            }
+        }
+
+        function loadSelectedRoute() {
+            const selectedRouteIndex = routeSelect.value;
+            if (selectedRouteIndex !== "") {
+                const routes = JSON.parse(localStorage.getItem('busRoutes') || '[]');
+                const selectedRoute = routes[selectedRouteIndex];
+                if (selectedRoute) {
+                    // You can process the selectedRoute.stops here for navigation.
+                    console.log("Ruta seleccionada:", selectedRoute);
+                    // For now, let's just log the stops. In a real app, you would use these stops for navigation logic.
+                    // Example: startNavigation(selectedRoute.stops);
+                    alert(`Ruta "${selectedRoute.name}" seleccionada. Navegación lista (funcionalidad de navegación no implementada en este ejemplo básico).`);
+                    currentRouteStopsForNavigation = selectedRoute.stops; // Store for navigation use
+                }
+            }
+        }
+
+        // --- Stop Creator Functions ---
+        function initMap() {
+            map = L.map('map').setView([0, 0], 2); // Default view, adjust as needed
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            map.on('click', function(e) {
+                const latlng = e.latlng;
+                L.marker(latlng).addTo(map)
+                    .bindPopup(`Nueva parada en: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`).openPopup();
+                stopNameInput.value = ''; // Clear previous name
+                scheduledTimeInput.value = ''; // Clear previous time
+                stopNameInput.focus(); // Focus on name input for immediate typing
+
+                // Store latlng temporarily for when "Add Stop" is clicked
+                map.tempLatLng = latlng;
+            });
+        }
+
+        function addStopToList() {
+            if (!map.tempLatLng) {
+                alert("Por favor, selecciona una ubicación en el mapa primero.");
+                return;
+            }
+            const stopName = stopNameInput.value.trim();
+            const scheduledTime = scheduledTimeInput.value;
+            const latlng = map.tempLatLng;
+
+            if (stopName && scheduledTime) {
+                const newStop = {
+                    name: stopName,
+                    lat: latlng.lat,
+                    lng: latlng.lng,
+                    scheduledTime: scheduledTime
+                };
+                stops.push(newStop);
+                updateStopListDisplay();
+                map.tempLatLng = null; // Clear temporary latlng
+                L.popup().remove(); // Close any open popup on map.
+                stopNameInput.value = '';
+                scheduledTimeInput.value = '';
+            } else {
+                alert("Por favor, ingresa nombre y horario para la parada.");
+            }
+        }
+
+        function updateStopListDisplay() {
+            stopList.innerHTML = ''; // Clear list
+            stops.forEach((stop, index) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${stop.name} - Horario: ${stop.scheduledTime} - Coordenadas: ${stop.lat.toFixed(4)}, ${stop.lng.toFixed(4)}`;
+                stopList.appendChild(listItem);
+            });
+        }
+
+        // --- Navigation Page Functions ---
+        let watchId;
+        let currentRouteStopsForNavigation = []; // Stores stops for the selected route
+
+        function startNavigation() {
+            if (!navigator.geolocation) {
+                alert("Geolocalización no es soportada por este navegador.");
+                return;
+            }
+
+            function success(position) {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                // console.log(`Latitud: ${latitude}, Longitud: ${longitude}`); // For debugging
+
+                if (currentRouteStopsForNavigation && currentRouteStopsForNavigation.length > 0) {
+                    calculateTimeDifference(latitude, longitude);
+                } else {
+                    timeDiffValueDisplay.textContent = "Ruta no seleccionada";
+                }
+            }
+
+            function error() {
+                alert("No se pudo obtener la ubicación. Asegúrate de que el GPS esté activado.");
+            }
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000, // 10 seconds timeout
+                maximumAge: 0 // Don't use cached location
+            };
+
+            watchId = navigator.geolocation.watchPosition(success, error, options);
+        }
+
+        function calculateTimeDifference(currentLat, currentLng) {
+            // --- Simple Time Difference Calculation (for demonstration) ---
+            // In a real application, you would need to:
+            // 1. Determine the *next* stop based on current location and route order.
+            // 2. Calculate distance to the next stop to estimate travel time.
+            // 3. Compare estimated arrival time with scheduled time.
+
+            // For this basic example, let's assume we are always checking against the *first* stop in the route for simplicity.
+            if (currentRouteStopsForNavigation.length > 0) {
+                const firstStop = currentRouteStopsForNavigation[0]; // Get the first stop
+                const scheduledTimeStr = firstStop.scheduledTime; // e.g., "08:30"
+                const scheduledTimeParts = scheduledTimeStr.split(':');
+                const scheduledHour = parseInt(scheduledTimeParts[0]);
+                const scheduledMinute = parseInt(scheduledTimeParts[1]);
+
+                const scheduledDate = new Date(); // Today's date
+                scheduledDate.setHours(scheduledHour, scheduledMinute, 0, 0); // Set scheduled time
+
+                const now = new Date();
+                const timeDiffMs = scheduledDate.getTime() - now.getTime(); // Difference in milliseconds
+                const timeDiffSeconds = Math.round(timeDiffMs / 1000); // Difference in seconds
+
+                const minutes = Math.floor(Math.abs(timeDiffSeconds) / 60);
+                const seconds = Math.abs(timeDiffSeconds) % 60;
+                const sign = timeDiffSeconds >= 0 ? '+' : '-'; // '+' for ahead, '-' for behind
+
+                const formattedTimeDiff = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                timeDiffValueDisplay.textContent = formattedTimeDiff;
+            } else {
+                timeDiffValueDisplay.textContent = "--:--"; // No route selected
+            }
+        }
+
+
+        function stopNavigation() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+        }
+
+
+        // --- Page Visibility Functions ---
+        function showCreatorPage() {
+            navigationPage.style.display = 'none';
+            creatorPage.style.display = 'block';
+            initMap(); // Initialize map only when creator page is shown
+        }
+
+        function showNavigationPage() {
+            creatorPage.style.display = 'none';
+            navigationPage.style.display = 'block';
+            stopNavigation(); // Stop GPS watch when going back to navigation page
+            loadRoutes(); // Refresh routes in dropdown when returning to navigation
+            startNavigation(); // Start GPS watch when going to navigation page
+        }
+
+
+        // --- Event Listeners ---
+        creatorButton.addEventListener('click', showCreatorPage);
+        backToNavigationButton.addEventListener('click', showNavigationPage);
+        addStopButton.addEventListener('click', addStopToList);
+        saveRouteButton.addEventListener('click', saveRoute);
+        routeSelect.addEventListener('change', loadSelectedRoute);
+        deleteRouteButton.addEventListener('click', deleteRoute);
+
+
+        // --- Initial Setup ---
+        showNavigationPage(); // Start on navigation page
+        loadRoutes(); // Load routes on initial load and page switch to navigation
+        startNavigation(); // Start GPS tracking on initial load and page switch to navigation
+
+    </script>
 </body>
 </html>
