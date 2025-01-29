@@ -1,22 +1,32 @@
 document.addEventListener("DOMContentLoaded", function () {
     let routeSelector = document.getElementById("route-selector");
-    let storedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
+    loadRoutes();
 
-    // Llenar el selector con las rutas guardadas
-    routeSelector.innerHTML = ""; // Limpiar opciones previas
-    storedRoutes.forEach((route, index) => {
-        let option = document.createElement("option");
-        option.value = index;
-        option.textContent = route.name;
-        routeSelector.appendChild(option);
-    });
+    function loadRoutes() {
+        let storedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
+        routeSelector.innerHTML = '<option value="">Seleccionar ruta...</option>';
 
-    // Mostrar la ruta seleccionada en el mapa
-    routeSelector.addEventListener("change", function () {
+        storedRoutes.forEach((route, index) => {
+            let option = document.createElement("option");
+            option.value = index;
+            option.textContent = route.name;
+            routeSelector.appendChild(option);
+        });
+    }
+
+    document.getElementById("delete-route").addEventListener("click", function () {
         let selectedIndex = routeSelector.value;
-        if (selectedIndex !== "") {
-            loadRouteOnMap(storedRoutes[selectedIndex]);
+        if (selectedIndex === "") {
+            alert("Selecciona una ruta para eliminar.");
+            return;
         }
+
+        let storedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
+        storedRoutes.splice(selectedIndex, 1);
+        localStorage.setItem("routes", JSON.stringify(storedRoutes));
+
+        alert("Ruta eliminada.");
+        loadRoutes(); // Recargar la lista sin recargar la página
     });
 });
 
