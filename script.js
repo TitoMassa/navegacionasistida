@@ -104,7 +104,6 @@ function updateTimeDifference() {
     });
 }
 function calculateTimeDifference(lat, lon) {
-function calculateTimeDifference(lat, lon) {
     let closestStop = null;
     let minDistance = Infinity;
     
@@ -132,18 +131,21 @@ function calculateTimeDifference(lat, lon) {
         let minutes = Math.floor(timeDiff / 60000); // Convierte a minutos
         let seconds = Math.floor((timeDiff % 60000) / 1000); // Convierte el resto a segundos
 
-        // Ajusta la diferencia para que siempre tenga el signo correcto
+        // Ajusta la diferencia para que siempre tenga el formato correcto
         let timeDifference = `${minutes < 10 ? "0" : ""}${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
         
-        // Muestra la diferencia con el signo correcto
+        // Aquí corregimos el signo y el color
         if (timeDiff < 0) {
+            // Si timeDiff es negativo, está atrasado
             timeDifference = `-${timeDifference}`; // Atrasado
             document.getElementById("time-difference").style.color = "red"; // Rojo si está atrasado
         } else if (timeDiff > 0) {
+            // Si timeDiff es positivo, está adelantado
             timeDifference = `+${timeDifference}`; // Adelantado
             document.getElementById("time-difference").style.color = "blue"; // Azul si está adelantado
         } else {
-            timeDifference = `+00:00`; // En horario
+            // Si no hay diferencia, está a tiempo
+            timeDifference = `+00:00`; // A tiempo
             document.getElementById("time-difference").style.color = "green"; // Verde si está a tiempo
         }
 
