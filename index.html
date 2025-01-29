@@ -1,203 +1,346 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Smart Move</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <title>Smart Move</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
-        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
-        #map { height: 400px; margin-bottom: 20px; }
-        .section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-        .time-display { font-size: 2em; font-weight: bold; margin: 10px 0; }
-        button { padding: 8px 15px; margin: 5px; cursor: pointer; }
-        .stop-list { list-style: none; padding: 0; }
-        .stop-item { padding: 5px; border-bottom: 1px solid #eee; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        #map {
+            height: 400px;
+            width: 100%;
+        }
+        .container {
+            padding: 10px;
+            text-align: center;
+        }
+        .info {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+        .time-diff {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .time-diff.ahead {
+            color: green;
+        }
+        .time-diff.behind {
+            color: red;
+        }
+        .stop-list {
+            list-style: none;
+            padding: 0;
+        }
+        .stop-list li {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            margin-bottom: 5px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <h1>Smart Move</h1>
-    
-    <div class="section">
+    <div class="container">
+        <h1>Smart Move</h1>
         <div id="map"></div>
-        <button onclick="newRoute()">Nueva Ruta</button>
+        <div class="info">
+            <div>Próxima parada: <span id="next-stop-name">Ninguna</span></div>
+            <div>Hora programada: <span id="next-stop-time">--:--</span></div>
+            <div class="time-diff" id="time-difference">00:00</div>
+            <button id="skip-stop">Saltar Parada</button>
+            <button id="prev-stop" class="hidden">Parada Anterior</button>
+        </div>
+        <h2>Rutas Creadas</h2>
+        <ul id="saved-routes-list" class="stop-list"></ul>
+        <h2>Paradas de la Ruta</h2>
+        <ul id="stops-list" class="stop-list"></ul>
         <button onclick="saveRoute()">Guardar Ruta</button>
-        <select id="savedRoutes" onchange="loadRoute(this.value)"></select>
-        <button onclick="deleteRoute()">Eliminar Ruta</button>
-        <h3>Paradas de la Ruta:</h3>
-        <ul id="stopsList" class="stop-list"></ul>
+        <button onclick="startNavigation()" id="start-navigation" disabled>Iniciar Navegación</button>
+
     </div>
 
-    <div class="section">
-        <div class="time-display" id="timeDifference">--:--</div>
-        <div id="nextStopInfo"></div>
-        <button onclick="previousStop()">Parada Anterior</button>
-        <button onclick="nextStop()">Siguiente Parada</button>
-    </div>
-
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        let map, currentRoute = {}, savedRoutes = {};
-        let currentPosition, watchId;
-        let currentStopIndex = 0;
+        let map = L.map('map').setView([0, 0], 13); // Inicializar el mapa
+        let currentRoute = [];
+        let currentPositionMarker = null;
+        let nextStopIndex = 0;
+        let watchId = null;
+        let savedRoutes = [];
+        let navigationRoute = null;
+        let markers = [];
 
-        // Inicializar mapa
-        function initMap() {
-            map = L.map('map').setView([19.4326, -99.1332], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            
-            map.on('click', function(e) {
-                if(currentRoute.creating) {
-                    const name = prompt('Nombre de la parada:');
-                    const time = prompt('Hora programada (HH:MM):');
-                    if(name && time) {
-                        addStopToRoute({
-                            coords: [e.latlng.lat, e.latlng.lng],
-                            name: name,
-                            time: time
-                        });
-                    }
-                }
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Obtener la posición actual y actualizarla
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(showPosition, showError, { enableHighAccuracy: true });
+        } else {
+            alert("La geolocalización no está soportada por este navegador.");
+        }
+
+        // Cargar rutas guardadas del localStorage
+        loadSavedRoutes();
+
+        function showPosition(position) {
+            let lat = position.coords.latitude;
+            let lng = position.coords.longitude;
+
+            if (!currentPositionMarker) {
+                currentPositionMarker = L.marker([lat, lng]).addTo(map);
+            } else {
+                currentPositionMarker.setLatLng([lat, lng]);
+            }
+
+            map.setView([lat, lng], 15);
+
+            if (navigationRoute) {
+                updateTimeDifference();
+            }
+        }
+
+        function showError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("El usuario ha denegado la solicitud de geolocalización.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("La información de ubicación no está disponible.");
+                    break;
+                case error.TIMEOUT:
+                    alert("La solicitud para obtener la ubicación del usuario ha expirado.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Ha ocurrido un error desconocido.");
+                    break;
+            }
+        }
+
+        map.on('click', function(e) {
+            let stopName = prompt("Nombre de la parada:");
+            if (stopName === null || stopName.trim() === "") return;
+
+            let stopTime = prompt("Hora programada (HH:MM):");
+            if (stopTime === null || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(stopTime)) {
+                alert("Formato de hora inválido. Debe ser HH:MM.");
+                return;
+            }
+
+            let marker = L.marker(e.latlng).addTo(map);
+            markers.push(marker);
+            currentRoute.push({
+                name: stopName,
+                time: stopTime,
+                latlng: e.latlng
             });
-        }
 
-        function addStopToRoute(stop) {
-            if(!currentRoute.stops) currentRoute.stops = [];
-            currentRoute.stops.push(stop);
             updateStopsList();
-            
-            // Agregar marcador al mapa
-            L.marker(stop.coords)
-                .bindPopup(`<b>${stop.name}</b><br>${stop.time}`)
-                .addTo(map);
-        }
+        });
 
         function updateStopsList() {
-            const list = document.getElementById('stopsList');
-            list.innerHTML = currentRoute.stops?.map((stop, i) => `
-                <li class="stop-item">${i+1}. ${stop.name} - ${stop.time}</li>
-            `).join('') || '';
+            const stopsList = document.getElementById('stops-list');
+            stopsList.innerHTML = '';
+            currentRoute.forEach((stop, index) => {
+                let li = document.createElement('li');
+                li.innerHTML = `${stop.name} - ${stop.time} <button onclick="editStop(${index})">Editar</button> <button onclick="deleteStop(${index})">Eliminar</button>`;
+                stopsList.appendChild(li);
+            });
+            document.getElementById('start-navigation').disabled = currentRoute.length === 0;
         }
 
-        function newRoute() {
-            currentRoute = { creating: true, stops: [] };
-            map.eachLayer(layer => { if(layer instanceof L.Marker) map.removeLayer(layer); });
+        function editStop(index) {
+            let stop = currentRoute[index];
+            let newName = prompt("Nuevo nombre de la parada:", stop.name);
+            if (newName === null || newName.trim() === "") return;
+
+            let newTime = prompt("Nueva hora programada (HH:MM):", stop.time);
+            if (newTime === null || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(newTime)) {
+                alert("Formato de hora inválido. Debe ser HH:MM.");
+                return;
+            }
+
+            stop.name = newName;
+            stop.time = newTime;
+            updateStopsList();
+        }
+
+        function deleteStop(index) {
+            map.removeLayer(markers[index]);
+            markers.splice(index, 1);
+            currentRoute.splice(index, 1);
             updateStopsList();
         }
 
         function saveRoute() {
-            const routeName = prompt('Nombre de la ruta:');
-            if(routeName && currentRoute.stops?.length > 0) {
-                savedRoutes[routeName] = currentRoute;
-                localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
-                updateSavedRoutesList();
-            }
+            let routeName = prompt("Nombre de la ruta:");
+            if (routeName === null || routeName.trim() === "") return;
+
+            savedRoutes.push({ name: routeName, stops: currentRoute });
+            localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
+            updateSavedRoutesList();
+            clearCurrentRoute();
         }
 
-        function deleteRoute() {
-            const routeName = document.getElementById('savedRoutes').value;
-            if(routeName && confirm(`¿Eliminar ruta ${routeName}?`)) {
-                delete savedRoutes[routeName];
-                localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
-                updateSavedRoutesList();
+        function loadSavedRoutes() {
+            let storedRoutes = localStorage.getItem('savedRoutes');
+            if (storedRoutes) {
+                savedRoutes = JSON.parse(storedRoutes);
             }
-        }
-
-        function loadRoute(routeName) {
-            currentRoute = savedRoutes[routeName];
-            currentRoute.creating = false;
-            map.eachLayer(layer => { if(layer instanceof L.Marker) map.removeLayer(layer); });
-            currentRoute.stops.forEach(addStopToRoute);
-            startNavigation();
+            updateSavedRoutesList();
         }
 
         function updateSavedRoutesList() {
-            const select = document.getElementById('savedRoutes');
-            select.innerHTML = Object.keys(savedRoutes).map(name => 
-                `<option value="${name}">${name}</option>`
-            ).join('');
+            const routesList = document.getElementById('saved-routes-list');
+            routesList.innerHTML = '';
+            savedRoutes.forEach((route, index) => {
+                let li = document.createElement('li');
+                li.innerHTML = `${route.name} <button onclick="loadRoute(${index})">Cargar</button> <button onclick="deleteRoute(${index})">Eliminar</button>`;
+                routesList.appendChild(li);
+            });
+        }
+
+        function loadRoute(index) {
+            clearCurrentRoute();
+            currentRoute = savedRoutes[index].stops.map(stop => ({ ...stop }));
+            markers = []; // Limpiar los marcadores actuales
+            currentRoute.forEach(stop => {
+                let marker = L.marker(stop.latlng).addTo(map);
+                markers.push(marker);
+            });
+            updateStopsList();
+        }
+
+        function deleteRoute(index) {
+            savedRoutes.splice(index, 1);
+            localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
+            updateSavedRoutesList();
+        }
+
+        function clearCurrentRoute() {
+            currentRoute = [];
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            updateStopsList();
         }
 
         function startNavigation() {
-            currentStopIndex = 0;
-            if(watchId) navigator.geolocation.clearWatch(watchId);
-            watchId = navigator.geolocation.watchPosition(position => {
-                currentPosition = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                updateTimeDifference();
-            }, console.error, { enableHighAccuracy: true });
+            navigationRoute = currentRoute;
+            nextStopIndex = 0;
+            updateNextStopInfo();
+            document.getElementById('prev-stop').classList.add('hidden');
+            if (navigationRoute.length > 1) {
+                document.getElementById('skip-stop').classList.remove('hidden');
+            }
+            if (!watchId) {
+                watchId = navigator.geolocation.watchPosition(updateTimeDifference, showError, { enableHighAccuracy: true });
+            }
         }
 
-        function calculateDistance(coords1, coords2) {
-            const R = 6371e3; // Radio de la Tierra en metros
-            const φ1 = coords1[0] * Math.PI/180;
-            const φ2 = coords2[0] * Math.PI/180;
-            const Δφ = (coords2[0]-coords1[0]) * Math.PI/180;
-            const Δλ = (coords2[1]-coords1[1]) * Math.PI/180;
+        function updateNextStopInfo() {
+            if (navigationRoute && nextStopIndex < navigationRoute.length) {
+                document.getElementById('next-stop-name').innerText = navigationRoute[nextStopIndex].name;
+                document.getElementById('next-stop-time').innerText = navigationRoute[nextStopIndex].time;
+            } else {
+                document.getElementById('next-stop-name').innerText = 'Fin de la ruta';
+                document.getElementById('next-stop-time').innerText = '--:--';
+            }
+        }
 
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Radio de la Tierra en metros
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
                       Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // Distancia en metros
         }
 
         function updateTimeDifference() {
-            if(!currentRoute.stops || currentStopIndex >= currentRoute.stops.length) return;
+            if (!navigationRoute || nextStopIndex >= navigationRoute.length) return;
 
-            const targetStop = currentRoute.stops[currentStopIndex];
-            const distance = calculateDistance(
-                [currentPosition.lat, currentPosition.lng],
-                targetStop.coords
-            );
-
-            if(distance <= 20 && currentStopIndex < currentRoute.stops.length - 1) {
-                currentStopIndex++;
-            }
-
-            const now = new Date();
-            const scheduledTime = new Date();
-            const [hours, minutes] = targetStop.time.split(':');
-            scheduledTime.setHours(hours, minutes, 0, 0);
-
-            const diff = Math.floor((now - scheduledTime) / 1000);
-            const sign = diff >= 0 ? '-' : '+';
-            const absDiff = Math.abs(diff);
-            const mm = String(Math.floor(absDiff / 60)).padStart(2, '0');
-            const ss = String(absDiff % 60).padStart(2, '0');
-
-            document.getElementById('timeDifference').textContent = `${sign}${mm}:${ss}`;
-            document.getElementById('nextStopInfo').innerHTML = `
-                Próxima parada: ${targetStop.name} - ${targetStop.time}
-            `;
-        }
-
-        function previousStop() {
-            if(currentStopIndex > 0) currentStopIndex--;
-        }
-
-        function nextStop() {
-            if(currentStopIndex < currentRoute.stops.length - 1) currentStopIndex++;
-        }
-
-        // Inicialización
-        initMap();
-        const saved = localStorage.getItem('savedRoutes');
-        if(saved) {
-            savedRoutes = JSON.parse(saved);
-            updateSavedRoutesList();
-        }
-        
-        // Solicitar permisos de geolocalización
-        if(navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(position => {
-                currentPosition = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                map.setView([currentPosition.lat, currentPosition.lng], 13);
+                let currentLatLng = new L.LatLng(position.coords.latitude, position.coords.longitude);
+                let nextStop = navigationRoute[nextStopIndex];
+                let distance = calculateDistance(currentLatLng.lat, currentLatLng.lng, nextStop.latlng.lat, nextStop.latlng.lng);
+
+                let currentTime = new Date();
+                let [hours, minutes] = nextStop.time.split(':').map(Number);
+                let scheduledTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), hours, minutes);
+
+                let timeDiff = scheduledTime - currentTime; // Diferencia en milisegundos
+
+                // Checkear si el usuario ha pasado la parada (20 metros de radio)
+                if (distance < 20 && nextStopIndex < navigationRoute.length - 1) {
+                    nextStopIndex++;
+                    updateNextStopInfo();
+                    if (nextStopIndex > 0) {
+                        document.getElementById('prev-stop').classList.remove('hidden');
+                    }
+                    if (nextStopIndex === navigationRoute.length - 1) {
+                        document.getElementById('skip-stop').classList.add('hidden');
+                    }
+                }
+
+                let timeDiffMinutes = Math.floor(Math.abs(timeDiff) / 60000);
+                let timeDiffSeconds = Math.floor((Math.abs(timeDiff) % 60000) / 1000);
+
+                let formattedTimeDiff = (timeDiff < 0 ? '-' : '+') +
+                                        String(timeDiffMinutes).padStart(2, '0') + ':' +
+                                        String(timeDiffSeconds).padStart(2, '0');
+
+                const timeDifferenceElement = document.getElementById('time-difference');
+                timeDifferenceElement.innerText = formattedTimeDiff;
+                timeDifferenceElement.className = 'time-diff ' + (timeDiff < 0 ? 'behind' : 'ahead');
             });
         }
+
+        document.getElementById('skip-stop').addEventListener('click', function() {
+            if (nextStopIndex < navigationRoute.length - 1) {
+                nextStopIndex++;
+                updateNextStopInfo();
+                updateTimeDifference();
+                if (nextStopIndex > 0) {
+                    document.getElementById('prev-stop').classList.remove('hidden');
+                }
+                if (nextStopIndex === navigationRoute.length - 1) {
+                    document.getElementById('skip-stop').classList.add('hidden');
+                }
+            }
+        });
+
+        document.getElementById('prev-stop').addEventListener('click', function() {
+            if (nextStopIndex > 0) {
+                nextStopIndex--;
+                updateNextStopInfo();
+                updateTimeDifference();
+                if (nextStopIndex < navigationRoute.length - 1) {
+                    document.getElementById('skip-stop').classList.remove('hidden');
+                }
+                if (nextStopIndex === 0) {
+                    document.getElementById('prev-stop').classList.add('hidden');
+                }
+            }
+        });
     </script>
 </body>
 </html>
