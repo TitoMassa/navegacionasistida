@@ -65,15 +65,17 @@
         function agregarParada(e) {
             let nombre = prompt("Nombre de la parada:");
             if (!nombre) return;
-            let horario = prompt("Horario programado (HH:MM):");
-            if (!horario.match(/^\d{2}:\d{2}$/)) {
+            let horarioLlegada = prompt("Horario de llegada (HH:MM):");
+            let horarioSalida = prompt("Horario de salida (HH:MM):");
+            
+            if (!horarioLlegada.match(/^\d{2}:\d{2}$/) || !horarioSalida.match(/^\d{2}:\d{2}$/)) {
                 alert("Formato incorrecto. Use HH:MM.");
                 return;
             }
 
-            let parada = { lat: e.latlng.lat, lng: e.latlng.lng, nombre, horario };
+            let parada = { lat: e.latlng.lat, lng: e.latlng.lng, nombre, horarioLlegada, horarioSalida };
             paradas.push(parada);
-            L.marker([parada.lat, parada.lng]).addTo(map).bindPopup(`${nombre} - ${horario}`);
+            L.marker([parada.lat, parada.lng]).addTo(map).bindPopup(`${nombre} - Llegada: ${horarioLlegada} / Salida: ${horarioSalida}`);
             actualizarListaParadas();
         }
 
@@ -82,7 +84,7 @@
             lista.innerHTML = "";
             paradas.forEach((p, i) => {
                 let item = document.createElement("li");
-                item.innerText = `${p.nombre} - ${p.horario}`;
+                item.innerText = `${p.nombre} - Llegada: ${p.horarioLlegada} / Salida: ${p.horarioSalida}`;
                 lista.appendChild(item);
             });
         }
@@ -121,7 +123,7 @@
 
         function actualizarProximaParada() {
             if (indexParada < ruta.length) {
-                document.getElementById("proxima-parada").innerText = `Próxima parada: ${ruta[indexParada].nombre} (${ruta[indexParada].horario})`;
+                document.getElementById("proxima-parada").innerText = `Próxima parada: ${ruta[indexParada].nombre} (Llegada: ${ruta[indexParada].horarioLlegada} / Salida: ${ruta[indexParada].horarioSalida})`;
             } else {
                 document.getElementById("proxima-parada").innerText = "Fin de la ruta";
             }
@@ -135,7 +137,7 @@
 
             let horaActual = new Date();
             let horaParada = new Date();
-            let [hh, mm] = parada.horario.split(":").map(Number);
+            let [hh, mm] = parada.horarioLlegada.split(":").map(Number);
             horaParada.setHours(hh, mm, 0);
 
             let diferencia = Math.round((horaActual - horaParada) / 1000);
@@ -146,7 +148,7 @@
             let diferenciaTexto = `${signo}${minutos.toString().padStart(2, "0")}:${segundos.toString().padStart(2, "0")}`;
             document.getElementById("diferencia-tiempo").innerText = `Diferencia: ${diferenciaTexto}`;
 
-            if (distancia < 20) {
+            if (distancia > 20) {
                 alert(`Has pasado la parada: ${parada.nombre}`);
                 indexParada++;
                 actualizarProximaParada();
