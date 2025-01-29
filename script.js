@@ -1,21 +1,46 @@
 document.addEventListener("DOMContentLoaded", function () {
-    let storedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
     let routeSelector = document.getElementById("route-selector");
+    let storedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
 
     // Llenar el selector con las rutas guardadas
+    routeSelector.innerHTML = ""; // Limpiar opciones previas
     storedRoutes.forEach((route, index) => {
         let option = document.createElement("option");
         option.value = index;
         option.textContent = route.name;
         routeSelector.appendChild(option);
     });
+
+    // Mostrar la ruta seleccionada en el mapa
+    routeSelector.addEventListener("change", function () {
+        let selectedIndex = routeSelector.value;
+        if (selectedIndex !== "") {
+            loadRouteOnMap(storedRoutes[selectedIndex]);
+        }
+    });
 });
 
 let map = L.map('map').setView([0, 0], 15);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let routeLayer = L.layerGroup().addTo(map);
 let marker = L.marker([0, 0]).addTo(map);
 let watchId = null;
 let selectedRoute = null;
+
+// Mostrar la ruta seleccionada en el mapa
+function loadRouteOnMap(route) {
+    routeLayer.clearLayers();
+
+    if (route.route.length > 0) {
+        let polyline = L.polyline(route.route.map(p => [p.lat, p.lon]), { color: 'blue' }).addTo(routeLayer);
+        map.fitBounds(polyline.getBounds());
+    }
+
+    route.stops.forEach(stop => {
+        L.marker([stop.lat, stop.lon]).addTo(routeLayer)
+            .bindPopup(`${stop.name} - ${stop.time}`);
+    });
+}
 
 function startNavigation() {
     let storedRoutes = JSON.parse(localStorage.getItem("routes")) || [];
@@ -34,7 +59,6 @@ function startNavigation() {
             document.getElementById("location").textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
             marker.setLatLng([lat, lon]);
             map.setView([lat, lon], 15);
-
             calculateTimeDifference(lat, lon);
         }, error => {
             console.error("Error obteniendo ubicación:", error);
