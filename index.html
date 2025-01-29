@@ -9,7 +9,15 @@
 </head>
 <body>
     <h1>Smart Move - Logística de Autobuses</h1>
+    
     <button onclick="window.location.href='rutas.html'">Crear Ruta</button>
+    
+    <h2>Seleccionar Ruta:</h2>
+    <select id="route-selector"></select>
+    
+    <button id="start-navigation">Iniciar Navegación</button>
+    <button id="stop-navigation">Detener Navegación</button>
+    
     <div id="map"></div>
     <p>Ubicación actual: <span id="location">Obteniendo...</span></p>
     <p>Diferencia de tiempo: <span id="time-difference">Calculando...</span></p>
