@@ -132,7 +132,6 @@
         }
 
         #route-creator-container {
-            display: none; /* Initially hidden */
             padding-top: 20px; /* Add some space above creator elements */
             border-top: 1px solid #eee; /* Separator line */
             margin-top: 20px;
@@ -170,7 +169,6 @@
     <div id="main-container">
         <div id="navigation-page">
             <h2>Navegación</h2>
-            <button id="creator-button">Crear Ruta</button>
 
             <label for="route-select">Seleccionar Ruta:</label>
             <select id="route-select">
@@ -209,7 +207,6 @@
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        const creatorButton = document.getElementById('creator-button');
         const navigationPage = document.getElementById('navigation-page');
         const routeCreatorContainer = document.getElementById('route-creator-container');
         const mapDiv = document.getElementById('map');
@@ -246,25 +243,13 @@
             const routeName = prompt("Nombre para guardar la ruta:");
             if (routeName) {
                 const routes = JSON.parse(localStorage.getItem('busRoutes') || '[]');
-                // Check if a route with the same name already exists
-                const existingRouteIndex = routes.findIndex(route => route.name === routeName);
-                if (existingRouteIndex !== -1) {
-                    if (confirm(`Ya existe una ruta con el nombre "${routeName}". ¿Desea reemplazarla?`)) {
-                        routes[existingRouteIndex] = { name: routeName, stops: stops };
-                    } else {
-                        return; // Do not save if user cancels replacement
-                    }
-                } else {
-                    routes.push({ name: routeName, stops: stops });
-                }
+                routes.push({ name: routeName, stops: stops });
                 localStorage.setItem('busRoutes', JSON.stringify(routes));
                 loadRoutes();
                 clearCreatorData();
                 alert(`Ruta "${routeName}" guardada!`);
-                showNavigationPage();
             }
         }
-
 
         function loadRoutes() {
             routeSelect.innerHTML = '<option value="">-- Seleccionar Ruta --</option>';
@@ -316,10 +301,6 @@
             }).addTo(map);
 
             map.on('click', onMapClick);
-            // Fix map not loading correctly when hidden initially
-            setTimeout(() => {
-                map.invalidateSize();
-            }, 100);
         }
 
         function onMapClick(e) {
@@ -525,4 +506,25 @@
 
 
         function calculateTimeDifference(stop) {
-            if (!stop || !stop.scheduledArri
+            if (!stop || !stop.scheduledArrivalTime || currentLatitude === undefined || currentLongitude === undefined) {
+                timeDiffValueDisplay.textContent = "--:--";
+                return;
+            }
+
+            const scheduledTimeStr = stop.scheduledArrivalTime;
+            const scheduledTimeParts = scheduledTimeStr.split(':');
+            const scheduledHour = parseInt(scheduledTimeParts[0]);
+            const scheduledMinute = parseInt(scheduledTimeParts[1]);
+
+            const scheduledDate = new Date();
+            scheduledDate.setHours(scheduledHour, scheduledMinute, 0, 0);
+
+            const now = new Date();
+            const timeDiffMs = scheduledDate.getTime() - now.getTime();
+            const timeDiffSeconds = Math.round(timeDiffMs / 1000);
+
+            const minutes = Math.floor(Math.abs(timeDiffSeconds) / 60);
+            const seconds = Math.abs(timeDiffSeconds) % 60;
+            const sign = timeDiffSeconds >= 0 ? '+' : '-';
+
+            const formattedT
