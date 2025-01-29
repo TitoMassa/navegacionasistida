@@ -13,10 +13,13 @@
     <button onclick="window.location.href='rutas.html'">Crear Ruta</button>
     
     <h2>Seleccionar Ruta:</h2>
-    <select id="route-selector"></select>
-
-    <select id="route-selector"></select>
-    <button id="delete-route">Eliminar ruta</button>
+    <label for="route-selector">Seleccionar Ruta:</label>
+<div class="custom-dropdown">
+    <select id="route-selector">
+        <option value="">Cargando rutas...</option>
+    </select>
+</div>
+<button id="delete-route">Eliminar ruta</button>
     
     <button id="start-navigation">Iniciar Navegación</button>
     <button id="stop-navigation">Detener Navegación</button>
