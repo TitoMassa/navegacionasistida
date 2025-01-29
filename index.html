@@ -41,6 +41,7 @@
         let indexParada = 0;
         let gpsActivo = false;
         let watchID;
+        let intervalo;
         let enParada = false;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -116,11 +117,12 @@
             enParada = false;
             actualizarProximaParada();
             alert("Navegación iniciada.");
-            setInterval(actualizarDiferenciaTiempo, 5000);
+            intervalo = setInterval(actualizarDiferenciaTiempo, 5000);
         }
 
         function detenerNavegacion() {
             gpsActivo = false;
+            clearInterval(intervalo);
             navigator.geolocation.clearWatch(watchID);
             alert("Navegación detenida.");
         }
@@ -129,6 +131,7 @@
             if (indexParada < ruta.length) {
                 let parada = ruta[indexParada];
                 document.getElementById("proxima-parada").innerText = `Próxima parada: ${parada.nombre} (Llegada: ${parada.horarioLlegada} / Salida: ${parada.horarioSalida})`;
+                actualizarDiferenciaTiempo();
             } else {
                 document.getElementById("proxima-parada").innerText = "Fin de la ruta";
             }
@@ -142,19 +145,19 @@
 
             if (distancia <= 20 && !enParada) {
                 enParada = true;
-                compararTiempo(parada.horarioLlegada);
+                actualizarDiferenciaTiempo();
             } else if (distancia > 20 && enParada) {
                 enParada = false;
-                alert(`Has pasado la parada: ${parada.nombre}`);
                 indexParada++;
                 actualizarProximaParada();
-                if (indexParada < ruta.length) {
-                    compararTiempo(ruta[indexParada].horarioLlegada);
-                }
             }
         }
 
-        function compararTiempo(horario) {
+        function actualizarDiferenciaTiempo() {
+            if (indexParada >= ruta.length) return;
+
+            let parada = ruta[indexParada];
+            let horario = enParada ? parada.horarioSalida : parada.horarioLlegada;
             let horaActual = new Date();
             let [hh, mm] = horario.split(":").map(Number);
             let horaParada = new Date();
