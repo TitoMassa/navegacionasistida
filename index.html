@@ -138,6 +138,35 @@
             margin-top: 20px;
         }
 
+        #route-creator-container h3 {
+            text-align: center;
+            color: #007bff;
+        }
+
+        #stop-form {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 10px;
+        }
+
+        #stop-form input[type="text"], #stop-form input[type="time"], #stop-form button {
+            margin-bottom: 8px;
+        }
+
+        #stop-list {
+            margin-top: 15px;
+        }
+
+        #creator-buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        #creator-buttons button {
+            margin: 0 10px;
+        }
+
 
         @media (max-width: 768px) {
             h1 {
@@ -174,6 +203,7 @@
 
             <div id="route-creator-container">
                 <h3>Creador de Ruta</h3>
+                <p>Haz clic en el mapa para seleccionar la ubicación de la parada y luego rellena el formulario.</p>
                 <div id="map"></div>
                 <div id="stop-form">
                     <input type="text" id="stop-name" placeholder="Nombre de la Parada">
@@ -181,9 +211,12 @@
                     <input type="time" id="scheduled-time-departure" placeholder="Horario de Salida (HH:MM) - Opcional">
                     <button id="add-stop-button">Agregar Parada</button>
                 </div>
+                <h4>Lista de Paradas</h4>
                 <ul id="stop-list"></ul>
-                <button id="save-route-button">Guardar Ruta</button>
-                <button id="cancel-route-creation-button">Cancelar Creación de Ruta</button>
+                <div id="creator-buttons">
+                    <button id="save-route-button">Guardar Ruta</button>
+                    <button id="cancel-route-creation-button">Cancelar</button>
+                </div>
             </div>
 
             <label for="route-select">Seleccionar Ruta:</label>
@@ -231,6 +264,7 @@
         let map;
         let stops = [];
         let routeMarkers = [];
+        let routePolyline; // Variable para la polilínea de la ruta
         let currentRouteName = '';
         let watchId;
         let currentRouteStopsForNavigation = [];
@@ -239,6 +273,7 @@
         let timeDifferenceInterval;
         let currentStopIndex = -1;
         let nextStopIndex = 0;
+        let tempLatLng = null; // Para almacenar temporalmente las coordenadas del clic en el mapa
 
 
         // --- Route Management Functions ---
@@ -308,48 +343,64 @@
         }
 
         function onMapClick(e) {
-            const latlng = e.latlng;
-            L.popup()
-                .setLatLng(latlng)
-                .setContent(`
-                    <div id="popup-form">
-                        <input type="text" id="popup-stop-name" placeholder="Nombre de Parada">
-                        <input type="time" id="popup-arrival-time" placeholder="Llegada (HH:MM)">
-                        <input type="time" id="popup-departure-time" placeholder="Salida (HH:MM) - Opcional">
-                        <button type="button" onclick="addStopFromPopup(${latlng.lat}, ${latlng.lng})">Agregar Parada</button>
-                    </div>
-                `)
-                .openOn(map);
+            tempLatLng = e.latlng; // Guarda las coordenadas temporalmente
+            stopNameInput.focus(); // Enfoca el input del nombre de la parada para facilitar la entrada
         }
 
-        window.addStopFromPopup = function(lat, lng) {
-            const popupContent = document.getElementById('popup-form');
-            const stopName = popupContent.querySelector('#popup-stop-name').value.trim();
-            const scheduledArrivalTime = popupContent.querySelector('#popup-arrival-time').value;
-            const scheduledDepartureTime = popupContent.querySelector('#popup-departure-time').value;
+
+        function addStop() {
+            const stopName = stopNameInput.value.trim();
+            const scheduledArrivalTime = scheduledTimeArrivalInput.value;
+            const scheduledDepartureTime = scheduledTimeDepartureInput.value;
+
+            if (!tempLatLng) {
+                alert("Por favor, haz clic en el mapa para seleccionar la ubicación de la parada.");
+                return;
+            }
 
             if (stopName && scheduledArrivalTime) {
                 const newStop = {
                     name: stopName,
-                    lat: lat,
-                    lng: lng,
+                    lat: tempLatLng.lat,
+                    lng: tempLatLng.lng,
                     scheduledArrivalTime: scheduledArrivalTime,
                     scheduledDepartureTime: scheduledDepartureTime
                 };
                 stops.push(newStop);
                 updateStopListDisplay();
                 addMarkerToMap(newStop);
-                map.closePopup();
+                updateRoutePolyline();
+                clearStopFormInputs();
+                tempLatLng = null; // Limpia las coordenadas temporales
             } else {
                 alert("Por favor, ingresa nombre y horario de llegada para la parada.");
             }
-        };
+        }
+
+        function clearStopFormInputs() {
+            stopNameInput.value = '';
+            scheduledTimeArrivalInput.value = '';
+            scheduledTimeDepartureInput.value = '';
+        }
+
 
         function addMarkerToMap(stop) {
             const marker = L.marker([stop.lat, stop.lng])
                               .bindPopup(`${stop.name}<br>Llegada: ${stop.scheduledArrivalTime}`);
             routeMarkers.push(marker);
             marker.addTo(map);
+        }
+
+        function updateRoutePolyline() {
+            if (routePolyline) {
+                map.removeLayer(routePolyline); // Elimina la polilínea anterior
+            }
+            if (stops.length > 1) {
+                const latlngs = stops.map(stop => [stop.lat, stop.lng]);
+                routePolyline = L.polyline(latlngs, {color: 'blue'}).addTo(map); // Crea y añade la nueva polilínea
+            } else {
+                routePolyline = null; // No hay polilínea si hay menos de 2 paradas
+            }
         }
 
 
@@ -390,7 +441,9 @@
                     }
                 });
             }
+            routeMarkers.splice(index, 1); // Asegura que routeMarkers y stops estén sincronizados
             updateStopListDisplay();
+            updateRoutePolyline(); // Actualiza la polilínea al eliminar una parada
         }
 
 
@@ -399,6 +452,10 @@
             stopList.innerHTML = '';
             routeMarkers.forEach(marker => map.removeLayer(marker));
             routeMarkers = [];
+            if (routePolyline) {
+                map.removeLayer(routePolyline);
+                routePolyline = null;
+            }
         }
 
 
@@ -483,47 +540,4 @@
                     const distanceToNextStop = calculateDistance(currentLat, currentLng, nextStop.lat, nextStop.lng);
                     if (distanceToNextStop <= 5) {
                         currentStopIndex = nextStopIndex;
-                        stopToDisplay = nextStop;
-                    } else {
-                        stopToDisplay = nextStop;
-                    }
-                }
-
-
-                if (stopToDisplay) {
-                    calculateTimeDifference(stopToDisplay);
-                    nextStopNameDisplay.textContent = stopToDisplay.name;
-                    nextStopTimeDisplay.textContent = stopToDisplay.scheduledArrivalTime;
-                } else {
-                    timeDiffValueDisplay.textContent = "--:--";
-                    nextStopNameDisplay.textContent = "--";
-                    nextStopTimeDisplay.textContent = "--:--";
-                }
-
-
-            } else {
-                timeDiffValueDisplay.textContent = "--:--";
-                nextStopNameDisplay.textContent = "--";
-                nextStopTimeDisplay.textContent = "--:--";
-            }
-        }
-
-
-        function calculateTimeDifference(stop) {
-            if (!stop || !stop.scheduledArrivalTime || currentLatitude === undefined || currentLongitude === undefined) {
-                timeDiffValueDisplay.textContent = "--:--";
-                return;
-            }
-
-            const scheduledTimeStr = stop.scheduledArrivalTime;
-            const scheduledTimeParts = scheduledTimeStr.split(':');
-            const scheduledHour = parseInt(scheduledTimeParts[0]);
-            const scheduledMinute = parseInt(scheduledTimeParts[1]);
-
-            const scheduledDate = new Date();
-            scheduledDate.setHours(scheduledHour, scheduledMinute, 0, 0);
-
-            const now = new Date();
-            const timeDiffMs = scheduledDate.getTime() - now.getTime();
-            const timeDiffSeconds = Math.round(timeDiffMs / 1000);
-            
+                        stopToDi
