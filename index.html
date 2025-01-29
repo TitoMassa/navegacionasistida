@@ -11,7 +11,6 @@
         #map { height: 300px; margin-bottom: 10px; }
         .button { background: #007BFF; color: white; border: none; padding: 10px; margin: 5px; cursor: pointer; }
         .button:hover { background: #0056b3; }
-        .paradas-list { text-align: left; }
         .info { font-size: 24px; font-weight: bold; }
     </style>
 </head>
@@ -25,15 +24,13 @@
     <button class="button" onclick="eliminarRuta()">Eliminar Ruta</button>
 
     <h2>Paradas</h2>
-    <ul id="paradas-list" class="paradas-list"></ul>
+    <ul id="paradas-list"></ul>
 
     <h2>Navegación</h2>
     <button class="button" onclick="iniciarNavegacion()">Iniciar Navegación</button>
     <button class="button" onclick="detenerNavegacion()">Detener Navegación</button>
     <p id="diferencia-tiempo" class="info">Diferencia: --:--</p>
     <p id="proxima-parada">Próxima parada: -</p>
-    <button class="button" onclick="saltarParada()">Saltar Parada</button>
-    <button class="button" onclick="volverParada()">Volver a la Anterior</button>
 
     <script>
         let map = L.map('map').setView([0, 0], 15);
@@ -42,7 +39,7 @@
         let indexParada = 0;
         let gpsActivo = false;
         let watchID;
-        let ultimaUbicacion = null; 
+        let enParada = false;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
@@ -55,12 +52,8 @@
                         let { latitude, longitude } = pos.coords;
                         map.setView([latitude, longitude], 15);
 
-                        if (!ultimaUbicacion) {
-                            ultimaUbicacion = { lat: latitude, lng: longitude };
-                        }
-
                         if (gpsActivo) {
-                            verificarTiempo(latitude, longitude);
+                            verificarUbicacion(latitude, longitude);
                         }
                     },
                     err => console.log("Error obteniendo GPS: ", err),
@@ -74,7 +67,7 @@
             if (!nombre) return;
             let horarioLlegada = prompt("Horario de llegada (HH:MM):");
             let horarioSalida = prompt("Horario de salida (HH:MM):");
-            
+
             if (!horarioLlegada.match(/^\d{2}:\d{2}$/) || !horarioSalida.match(/^\d{2}:\d{2}$/)) {
                 alert("Formato incorrecto. Use HH:MM.");
                 return;
@@ -118,6 +111,7 @@
             gpsActivo = true;
             obtenerGPS();
             indexParada = 0;
+            enParada = false;
             actualizarProximaParada();
             alert("Navegación iniciada.");
         }
@@ -130,20 +124,38 @@
 
         function actualizarProximaParada() {
             if (indexParada < ruta.length) {
-                document.getElementById("proxima-parada").innerText = `Próxima parada: ${ruta[indexParada].nombre} (Llegada: ${ruta[indexParada].horarioLlegada} / Salida: ${ruta[indexParada].horarioSalida})`;
+                let parada = ruta[indexParada];
+                document.getElementById("proxima-parada").innerText = `Próxima parada: ${parada.nombre} (Llegada: ${parada.horarioLlegada} / Salida: ${parada.horarioSalida})`;
             } else {
                 document.getElementById("proxima-parada").innerText = "Fin de la ruta";
             }
         }
 
-        function verificarTiempo(lat, lng) {
+        function verificarUbicacion(lat, lng) {
             if (indexParada >= ruta.length) return;
 
             let parada = ruta[indexParada];
             let distancia = calcularDistancia(lat, lng, parada.lat, parada.lng);
 
+            if (distancia <= 20) {
+                if (!enParada) {
+                    enParada = true;
+                    compararTiempo(parada.horarioLlegada);
+                }
+            } else if (enParada && distancia > 20) {
+                enParada = false;
+                alert(`Has pasado la parada: ${parada.nombre}`);
+                indexParada++;
+                actualizarProximaParada();
+                if (indexParada < ruta.length) {
+                    compararTiempo(ruta[indexParada].horarioLlegada);
+                }
+            }
+        }
+
+        function compararTiempo(horario) {
             let horaActual = new Date();
-            let [hh, mm] = parada.horarioLlegada.split(":").map(Number);
+            let [hh, mm] = horario.split(":").map(Number);
             let horaParada = new Date();
             horaParada.setHours(hh, mm, 0);
 
@@ -152,22 +164,11 @@
             let segundos = Math.abs(diferencia) % 60;
             let signo = diferencia < 0 ? "-" : "+";
 
-            let diferenciaTexto = `${signo}${minutos.toString().padStart(2, "0")}:${segundos.toString().padStart(2, "0")}`;
-            document.getElementById("diferencia-tiempo").innerText = `Diferencia: ${diferenciaTexto}`;
-
-            if (distancia > 20 && ultimaUbicacion) {
-                let movido = calcularDistancia(lat, lng, ultimaUbicacion.lat, ultimaUbicacion.lng) > 5; 
-                if (movido) {
-                    alert(`Has pasado la parada: ${parada.nombre}`);
-                    indexParada++;
-                    actualizarProximaParada();
-                    ultimaUbicacion = { lat, lng };
-                }
-            }
+            document.getElementById("diferencia-tiempo").innerText = `Diferencia: ${signo}${minutos.toString().padStart(2, "0")}:${segundos.toString().padStart(2, "0")}`;
         }
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
-            return Math.hypot(lat2 - lat1, lon2 - lon1) * 111139; 
+            return Math.hypot(lat2 - lat1, lon2 - lon1) * 111139;
         }
 
         map.on('click', agregarParada);
