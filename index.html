@@ -354,6 +354,8 @@
             function success(position) {
                 currentLatitude = position.coords.latitude;
                 currentLongitude = position.coords.longitude;
+                // Actualizar la navegación inmediatamente al obtener la ubicación inicial
+                updateNavigationDisplay(currentLatitude, currentLongitude);
             }
 
             function error() {
@@ -368,6 +370,7 @@
 
             watchId = navigator.geolocation.watchPosition(success, error, options);
 
+            // Mantener la actualización de la navegación cada 5 segundos para reflejar cambios
             timeDifferenceInterval = setInterval(function() {
                 if (currentLatitude !== undefined && currentLongitude !== undefined && currentRouteStopsForNavigation && currentRouteStopsForNavigation.length > 0) {
                     updateNavigationDisplay(currentLatitude, currentLongitude);
@@ -384,6 +387,13 @@
         }
 
         function updateNavigationDisplay(currentLat, currentLng) {
+            if (!currentLat || !currentLng) {
+                timeDiffValueDisplay.textContent = "Obteniendo ubicación...";
+                nextStopNameDisplay.textContent = "--";
+                nextStopTimeDisplay.textContent = "--:--";
+                return; // No continuar si no hay ubicación
+            }
+
             if (currentRouteStopsForNavigation.length > 0) {
                 let nextStop = currentRouteStopsForNavigation[nextStopIndex];
                 let stopToDisplay = nextStop;
@@ -443,7 +453,7 @@
 
 
         function calculateTimeDifference(stop) {
-            if (!stop || !stop.scheduledArrivalTime) {
+            if (!stop || !stop.scheduledArrivalTime || currentLatitude === undefined || currentLongitude === undefined) {
                 timeDiffValueDisplay.textContent = "--:--";
                 return;
             }
@@ -516,16 +526,4 @@
         function skipToNextStop() {
             if (currentRouteStopsForNavigation.length > 0 && nextStopIndex < currentRouteStopsForNavigation.length - 1) {
                 nextStopIndex++;
-                currentStopIndex = -1; // Reset current stop as we are skipping
-                updateNavigationDisplay(currentLatitude, currentLongitude); // Update display immediately
-            } else if (nextStopIndex >= currentRouteStopsForNavigation.length - 1) {
-                alert("Ya estás en la última parada.");
-            } else {
-                alert("No hay ruta seleccionada o no hay paradas siguientes.");
-            }
-        }
-
-        function goToPreviousStop() {
-            if (currentRouteStopsForNavigation.length > 0 && nextStopIndex > 0) {
-                nextStopIndex--;
-                currentStopIndex = -1; // Reset c
+           
