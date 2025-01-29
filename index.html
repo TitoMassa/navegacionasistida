@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        /* Estilos CSS - los mismos que antes */
+        /* Estilos CSS -  los mismos que ya tenías */
         body {
             font-family: sans-serif;
             margin: 0;
@@ -189,6 +189,7 @@
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
+        // *** Aquí va el código JavaScript reescrito ***
         const creatorButton = document.getElementById('creator-button');
         const navigationPage = document.getElementById('navigation-page');
         const creatorPage = document.getElementById('creator-page');
@@ -210,10 +211,10 @@
 
 
         let map;
-        let stops = [];
-        let currentRouteName = '';
-        let watchId;
-        let currentRouteStopsForNavigation = [];
+        let stops = []; // Array para almacenar las paradas de la ruta actual
+        let currentRouteName = ''; // Para el nombre de la ruta si se guarda
+        let watchId; // Para la geolocalización
+        let currentRouteStopsForNavigation = []; // Paradas de la ruta seleccionada para navegación
         let currentLatitude;
         let currentLongitude;
         let timeDifferenceInterval;
@@ -221,21 +222,100 @@
         let nextStopIndex = 0;
 
 
-        // --- Route Management Functions ---
+        // --- Funciones de la Página Creador de Paradas ---
+        function showCreatorPage() {
+            navigationPage.style.display = 'none';
+            creatorPage.style.display = 'block';
+            initCreatorMap(); // Inicializar el mapa para la creación de paradas
+        }
+
+        function initCreatorMap() {
+            map = L.map('map').setView([0, 0], 2); // Centrar el mapa al inicio
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            map.on('click', onMapClick); // Listener para clicks en el mapa
+        }
+
+        function onMapClick(e) {
+            let latlng = e.latlng;
+            L.popup()
+                .setLatLng(latlng)
+                .setContent("Selecciona 'Agregar Parada' para confirmar este punto.")
+                .openOn(map);
+
+            map.tempLatLng = latlng; // Guardar las coordenadas temporalmente
+        }
+
+
+        function addStopToList() {
+            if (!map.tempLatLng) {
+                alert("Por favor, selecciona una ubicación en el mapa haciendo clic.");
+                return;
+            }
+
+            const stopName = stopNameInput.value.trim();
+            const scheduledTimeArrival = scheduledTimeArrivalInput.value;
+            const scheduledTimeDeparture = scheduledTimeDepartureInput.value;
+            const latlng = map.tempLatLng;
+
+
+            if (stopName && scheduledTimeArrival) {
+                const newStop = {
+                    name: stopName,
+                    lat: latlng.lat,
+                    lng: latlng.lng,
+                    scheduledArrivalTime: scheduledTimeArrival,
+                    scheduledDepartureTime: scheduledTimeDeparture
+                };
+                stops.push(newStop); // Agregar la parada al array 'stops'
+                updateStopListDisplay(); // Actualizar la lista visual de paradas
+                clearStopForm(); // Limpiar el formulario después de agregar
+                map.closePopup(); // Cerrar el popup del mapa
+                map.tempLatLng = null; // Limpiar la latlng temporal
+            } else {
+                alert("Nombre de parada y Horario de Llegada son obligatorios.");
+            }
+        }
+
+        function updateStopListDisplay() {
+            stopList.innerHTML = ''; // Limpiar la lista visual
+            stops.forEach((stop, index) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${stop.name} - Llegada: ${stop.scheduledArrivalTime}  (Lat: ${stop.lat.toFixed(4)}, Lng: ${stop.lng.toFixed(4)}) `;
+                stopList.appendChild(listItem);
+            });
+        }
+
+        function clearStopForm() {
+            stopNameInput.value = '';
+            scheduledTimeArrivalInput.value = '';
+            scheduledTimeDepartureInput.value = '';
+        }
+
         function saveRoute() {
             const routeName = prompt("Nombre para guardar la ruta:");
             if (routeName) {
                 const routes = JSON.parse(localStorage.getItem('busRoutes') || '[]');
-                routes.push({ name: routeName, stops: stops });
+                routes.push({ name: routeName, stops: stops }); // Guardar la ruta con el array 'stops' actual
                 localStorage.setItem('busRoutes', JSON.stringify(routes));
-                loadRoutes();
-                stops = [];
-                stopList.innerHTML = '';
+                loadRoutes(); // Recargar las rutas en el selector
+                stops = []; // Limpiar el array de paradas para la próxima ruta
+                stopList.innerHTML = ''; // Limpiar la lista visual
                 alert(`Ruta "${routeName}" guardada!`);
-                showNavigationPage();
+                showNavigationPage(); // Volver a la página de navegación
             }
         }
 
+        function showNavigationPage() {
+            creatorPage.style.display = 'none';
+            navigationPage.style.display = 'block';
+            loadRoutes(); // Recargar las rutas al volver a navegación
+        }
+
+
+        // --- Funciones de Gestión de Rutas (Navigation Page) ---
         function loadRoutes() {
             routeSelect.innerHTML = '<option value="">-- Seleccionar Ruta --</option>';
             const routes = JSON.parse(localStorage.getItem('busRoutes') || '[]');
@@ -270,262 +350,28 @@
                 if (selectedRoute) {
                     console.log("Ruta seleccionada:", selectedRoute);
                     alert(`Ruta "${selectedRoute.name}" seleccionada. Navegación lista.`);
-                    currentRouteStopsForNavigation = selectedRoute.stops;
+                    currentRouteStopsForNavigation = selectedRoute.stops; // Cargar paradas para navegación
                     currentStopIndex = -1;
                     nextStopIndex = 0;
-                    updateNavigationDisplay(currentLatitude, currentLongitude);
+                    // Aquí podrías llamar a una función para iniciar la navegación si la tienes
+                    // updateNavigationDisplay(currentLatitude, currentLongitude); // Si tienes una función de visualización de navegación
                 }
             }
         }
 
-        // --- Stop Creator Functions ---
-        function initMap() {
-            map = L.map('map').setView([0, 0], 2);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
 
-            map.on('click', function(e) {
-                const latlng = e.latlng;
-                L.marker(latlng).addTo(map)
-                    .bindPopup(`Nueva parada en: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`).openPopup();
-                stopNameInput.value = '';
-                scheduledTimeArrivalInput.value = '';
-                scheduledTimeDepartureInput.value = '';
-                stopNameInput.focus();
-
-                map.tempLatLng = latlng;
-            });
-        }
-
-        function addStopToList() {
-            if (!map.tempLatLng) {
-                alert("Por favor, selecciona una ubicación en el mapa primero.");
-                return;
-            }
-            const stopName = stopNameInput.value.trim();
-            const scheduledTimeArrival = scheduledTimeArrivalInput.value;
-            const scheduledTimeDeparture = scheduledTimeDepartureInput.value;
-
-            const latlng = map.tempLatLng;
-
-            if (stopName && scheduledTimeArrival) {
-                const newStop = {
-                    name: stopName,
-                    lat: latlng.lat,
-                    lng: latlng.lng,
-                    scheduledArrivalTime: scheduledTimeArrival,
-                    scheduledDepartureTime: scheduledTimeDeparture
-                };
-                stops.push(newStop);
-                updateStopListDisplay();
-                map.tempLatLng = null;
-                L.popup().remove();
-                stopNameInput.value = '';
-                scheduledTimeArrivalInput.value = '';
-                scheduledTimeDepartureInput.value = '';
-            } else {
-                alert("Por favor, ingresa nombre y horario de llegada para la parada.");
-            }
-        }
-
-        function updateStopListDisplay() {
-            stopList.innerHTML = '';
-            stops.forEach((stop, index) => {
-                let listItemText = `${stop.name} - Llegada: ${stop.scheduledArrivalTime}`;
-                if (stop.scheduledDepartureTime) {
-                    listItemText += ` - Salida: ${stop.scheduledDepartureTime}`;
-                }
-                listItemText += ` - Coordenadas: ${stop.lat.toFixed(4)}, ${stop.lng.toFixed(4)}`;
-                const listItem = document.createElement('li');
-                listItem.textContent = listItemText;
-                stopList.appendChild(listItem);
-            });
-        }
-
-        // --- Navigation Page Functions ---
-
-        function startNavigation() {
-            if (!navigator.geolocation) {
-                alert("Geolocalización no es soportada por este navegador.");
-                return;
-            }
-
-            function success(position) {
-                currentLatitude = position.coords.latitude;
-                currentLongitude = position.coords.longitude;
-            }
-
-            function error() {
-                alert("No se pudo obtener la ubicación. Asegúrate de que el GPS esté activado.");
-            }
-
-            const options = {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            };
-
-            watchId = navigator.geolocation.watchPosition(success, error, options);
-
-            timeDifferenceInterval = setInterval(function() {
-                if (currentLatitude !== undefined && currentLongitude !== undefined && currentRouteStopsForNavigation && currentRouteStopsForNavigation.length > 0) {
-                    updateNavigationDisplay(currentLatitude, currentLongitude);
-                } else if (!currentRouteStopsForNavigation || currentRouteStopsForNavigation.length === 0) {
-                    timeDiffValueDisplay.textContent = "--:--";
-                    nextStopNameDisplay.textContent = "--";
-                    nextStopTimeDisplay.textContent = "--:--";
-                } else {
-                    timeDiffValueDisplay.textContent = "Obteniendo ubicación...";
-                    nextStopNameDisplay.textContent = "--";
-                    nextStopTimeDisplay.textContent = "--:--";
-                }
-            }, 5000);
-        }
-
-        function updateNavigationDisplay(currentLat, currentLng) {
-            if (currentRouteStopsForNavigation.length > 0) {
-                let nextStop = currentRouteStopsForNavigation[nextStopIndex];
-                let stopToDisplay = nextStop;
-
-                if (!nextStop) {
-                    timeDiffValueDisplay.textContent = "Fin de ruta";
-                    nextStopNameDisplay.textContent = "--";
-                    nextStopTimeDisplay.textContent = "--:--";
-                    return;
-                }
-
-                if (currentStopIndex !== -1) {
-                    const currentStop = currentRouteStopsForNavigation[currentStopIndex];
-                    const distanceToCurrentStop = calculateDistance(currentLat, currentLng, currentStop.lat, currentStop.lng);
-                    if (distanceToCurrentStop > 10) {
-                        currentStopIndex = -1;
-                        nextStopIndex++;
-                        if (nextStopIndex >= currentRouteStopsForNavigation.length) {
-                            timeDiffValueDisplay.textContent = "Fin de ruta";
-                            nextStopNameDisplay.textContent = "--";
-                            nextStopTimeDisplay.textContent = "--:--";
-                            return;
-                        }
-                        nextStop = currentRouteStopsForNavigation[nextStopIndex];
-                        stopToDisplay = nextStop;
-                    } else {
-                        stopToDisplay = currentStop;
-                    }
-                } else {
-                    const distanceToNextStop = calculateDistance(currentLat, currentLng, nextStop.lat, nextStop.lng);
-                    if (distanceToNextStop <= 5) {
-                        currentStopIndex = nextStopIndex;
-                        stopToDisplay = nextStop;
-                    } else {
-                        stopToDisplay = nextStop;
-                    }
-                }
+        // --- Event Listeners ---
+        creatorButton.addEventListener('click', showCreatorPage);
+        backToNavigationButton.addEventListener('click', showNavigationPage);
+        addStopButton.addEventListener('click', addStopToList);
+        saveRouteButton.addEventListener('click', saveRoute);
+        routeSelect.addEventListener('change', loadSelectedRoute);
+        deleteRouteButton.addEventListener('click', deleteRoute);
 
 
-                if (stopToDisplay) {
-                    calculateTimeDifference(stopToDisplay);
-                    nextStopNameDisplay.textContent = stopToDisplay.name;
-                    nextStopTimeDisplay.textContent = stopToDisplay.scheduledArrivalTime;
-                } else {
-                    timeDiffValueDisplay.textContent = "--:--";
-                    nextStopNameDisplay.textContent = "--";
-                    nextStopTimeDisplay.textContent = "--:--";
-                }
+        // --- Initial Load ---
+        loadRoutes(); // Cargar rutas al iniciar la página
 
-
-            } else {
-                timeDiffValueDisplay.textContent = "--:--";
-                nextStopNameDisplay.textContent = "--";
-                nextStopTimeDisplay.textContent = "--:--";
-            }
-        }
-
-
-        function calculateTimeDifference(stop) {
-            if (!stop || !stop.scheduledArrivalTime) {
-                timeDiffValueDisplay.textContent = "--:--";
-                return;
-            }
-
-            const scheduledTimeStr = stop.scheduledArrivalTime;
-            const scheduledTimeParts = scheduledTimeStr.split(':');
-            const scheduledHour = parseInt(scheduledTimeParts[0]);
-            const scheduledMinute = parseInt(scheduledTimeParts[1]);
-
-            const scheduledDate = new Date();
-            scheduledDate.setHours(scheduledHour, scheduledMinute, 0, 0);
-
-            const now = new Date();
-            const timeDiffMs = scheduledDate.getTime() - now.getTime();
-            const timeDiffSeconds = Math.round(timeDiffMs / 1000);
-
-            const minutes = Math.floor(Math.abs(timeDiffSeconds) / 60);
-            const seconds = Math.abs(timeDiffSeconds) % 60;
-            const sign = timeDiffSeconds >= 0 ? '+' : '-';
-
-            const formattedTimeDiff = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            timeDiffValueDisplay.textContent = formattedTimeDiff;
-        }
-
-
-        function stopNavigation() {
-            if (watchId) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-            }
-            if (timeDifferenceInterval) {
-                clearInterval(timeDifferenceInterval);
-                timeDifferenceInterval = null;
-            }
-        }
-
-
-        function showCreatorPage() {
-            navigationPage.style.display = 'none';
-            creatorPage.style.display = 'block';
-            initMap();
-            stopNavigation();
-        }
-
-        function showNavigationPage() {
-            creatorPage.style.display = 'none';
-            navigationPage.style.display = 'block';
-            stopNavigation();
-            loadRoutes();
-            startNavigation();
-        }
-
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const φ1 = lat1 * Math.PI/180;
-            const φ2 = lat2 * Math.PI/180;
-            const Δφ = (lat2-lat1) * Math.PI/180;
-            const Δλ = (lon2-lon1) * Math.PI/180;
-
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                    Math.cos(φ1) * Math.cos(φ2) *
-                    Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-            const d = R * c;
-            return d;
-        }
-
-        // --- Manual Navigation Control ---
-        function skipToNextStop() {
-            if (currentRouteStopsForNavigation.length > 0 && nextStopIndex < currentRouteStopsForNavigation.length - 1) {
-                nextStopIndex++;
-                currentStopIndex = -1; // Reset current stop as we are skipping
-                updateNavigationDisplay(currentLatitude, currentLongitude); // Update display immediately
-            } else if (nextStopIndex >= currentRouteStopsForNavigation.length - 1) {
-                alert("Ya estás en la última parada.");
-            } else {
-                alert("No hay ruta seleccionada o no hay paradas siguientes.");
-            }
-        }
-
-        function goToPreviousStop() {
-            if (currentRouteStopsForNavigation.length > 0 && nextStopIndex > 0) {
-                nextStopIndex--;
-                currentStopIndex = -1; // Reset c
+    </script>
+</body>
+</html>
