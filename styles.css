@@ -42,3 +42,13 @@ ul {
 li {
     margin: 5px 0;
 }
+
+.custom-dropdown select {
+    appearance: none;
+    background-color: #222;
+    color: white;
+    border: 1px solid #888;
+    padding: 10px;
+    width: 220px;
+    text-align: center;
+}
