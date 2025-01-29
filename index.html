@@ -312,6 +312,7 @@
             creatorPage.style.display = 'none';
             navigationPage.style.display = 'block';
             loadRoutes(); // Recargar las rutas al volver a navegación
+            startNavigation(); // Iniciar la navegación al volver a la página de navegación
         }
 
 
@@ -353,9 +354,151 @@
                     currentRouteStopsForNavigation = selectedRoute.stops; // Cargar paradas para navegación
                     currentStopIndex = -1;
                     nextStopIndex = 0;
-                    // Aquí podrías llamar a una función para iniciar la navegación si la tienes
-                    // updateNavigationDisplay(currentLatitude, currentLongitude); // Si tienes una función de visualización de navegación
+                    updateNavigationDisplay(currentLatitude, currentLongitude); // Inicializar visualización de navegación
                 }
+            }
+        }
+
+        // --- Funciones de Navegación ---
+        function startNavigation() {
+            if (!navigator.geolocation) {
+                alert("Geolocalización no es soportada por este navegador.");
+                return;
+            }
+
+            function success(position) {
+                currentLatitude = position.coords.latitude;
+                currentLongitude = position.coords.longitude;
+            }
+
+            function error() {
+                alert("No se pudo obtener la ubicación. Asegúrate de que el GPS esté activado.");
+            }
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            };
+
+            watchId = navigator.geolocation.watchPosition(success, error, options);
+
+            timeDifferenceInterval = setInterval(function() {
+                if (currentLatitude !== undefined && currentLongitude !== undefined && currentRouteStopsForNavigation && currentRouteStopsForNavigation.length > 0) {
+                    updateNavigationDisplay(currentLatitude, currentLongitude);
+                } else if (!currentRouteStopsForNavigation || currentRouteStopsForNavigation.length === 0) {
+                    timeDiffValueDisplay.textContent = "--:--";
+                    nextStopNameDisplay.textContent = "--";
+                    nextStopTimeDisplay.textContent = "--:--";
+                } else {
+                    timeDiffValueDisplay.textContent = "Obteniendo ubicación...";
+                    nextStopNameDisplay.textContent = "--";
+                    nextStopTimeDisplay.textContent = "--:--";
+                }
+            }, 5000);
+        }
+
+        function updateNavigationDisplay(currentLat, currentLng) {
+            if (currentRouteStopsForNavigation.length > 0) {
+                let nextStop = currentRouteStopsForNavigation[nextStopIndex];
+
+                if (!nextStop) {
+                    timeDiffValueDisplay.textContent = "Fin de ruta";
+                    nextStopNameDisplay.textContent = "--";
+                    nextStopTimeDisplay.textContent = "--:--";
+                    return;
+                }
+
+                calculateTimeDifference(nextStop); // Calcula la diferencia de tiempo para la *próxima* parada
+                nextStopNameDisplay.textContent = nextStop.name;
+                nextStopTimeDisplay.textContent = nextStop.scheduledArrivalTime;
+
+
+            } else {
+                timeDiffValueDisplay.textContent = "--:--";
+                nextStopNameDisplay.textContent = "--";
+                nextStopTimeDisplay.textContent = "--:--";
+            }
+        }
+
+
+        function calculateTimeDifference(stop) {
+            if (!stop || !stop.scheduledArrivalTime) {
+                timeDiffValueDisplay.textContent = "--:--";
+                return;
+            }
+
+            const scheduledTimeStr = stop.scheduledArrivalTime;
+            const scheduledTimeParts = scheduledTimeStr.split(':');
+            const scheduledHour = parseInt(scheduledTimeParts[0]);
+            const scheduledMinute = parseInt(scheduledTimeParts[1]);
+
+            const scheduledDate = new Date();
+            scheduledDate.setHours(scheduledHour, scheduledMinute, 0, 0);
+
+            const now = new Date();
+            const timeDiffMs = scheduledDate.getTime() - now.getTime();
+            const timeDiffSeconds = Math.round(timeDiffMs / 1000);
+
+            const minutes = Math.floor(Math.abs(timeDiffSeconds) / 60);
+            const seconds = Math.abs(timeDiffSeconds) % 60;
+            const sign = timeDiffSeconds >= 0 ? '+' : '-';
+
+            const formattedTimeDiff = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            timeDiffValueDisplay.textContent = formattedTimeDiff;
+        }
+
+
+        function stopNavigation() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            if (timeDifferenceInterval) {
+                clearInterval(timeDifferenceInterval);
+                timeDifferenceInterval = null;
+            }
+        }
+
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lon2-lon1) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            const d = R * c;
+            return d;
+        }
+
+        // --- Manual Navigation Control ---
+        function skipToNextStop() {
+            if (currentRouteStopsForNavigation.length > 0 && nextStopIndex < currentRouteStopsForNavigation.length - 1) {
+                nextStopIndex++;
+                currentStopIndex = -1; // Reset current stop index
+                updateNavigationDisplay(currentLatitude, currentLongitude); // Update display immediately
+            } else if (nextStopIndex >= currentRouteStopsForNavigation.length - 1) {
+                alert("Ya estás en la última parada.");
+            } else {
+                alert("No hay ruta seleccionada o no hay paradas siguientes.");
+            }
+        }
+
+        function goToPreviousStop() {
+            if (currentRouteStopsForNavigation.length > 0 && nextStopIndex > 0) {
+                nextStopIndex--;
+                currentStopIndex = -1; // Reset current stop index
+                updateNavigationDisplay(currentLatitude, currentLongitude);
+            } else if (nextStopIndex <= 0) {
+                alert("Ya estás en la primera parada.");
+            } else {
+                alert("No hay ruta seleccionada o no hay paradas anteriores.");
             }
         }
 
@@ -367,11 +510,10 @@
         saveRouteButton.addEventListener('click', saveRoute);
         routeSelect.addEventListener('change', loadSelectedRoute);
         deleteRouteButton.addEventListener('click', deleteRoute);
+        prevStopButton.addEventListener('click', goToPreviousStop);
+        skipStopButton.addEventListener('click', skipToNextStop);
 
 
         // --- Initial Load ---
         loadRoutes(); // Cargar rutas al iniciar la página
-
-    </script>
-</body>
-</html>
+        startNavigation(); // Iniciar la geolocalización al cargar la página de navegación
