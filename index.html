@@ -132,21 +132,9 @@
         }
 
         #route-creator-container {
-            display: none; /* Initially hidden */
-            padding: 20px;
-            border: 1px solid #ddd;
+            padding-top: 20px; /* Add some space above creator elements */
+            border-top: 1px solid #eee; /* Separator line */
             margin-top: 20px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            width: 95%;
-            max-width: 600px;
-            box-sizing: border-box;
-        }
-
-        #route-creator-container h3 {
-            text-align: center;
-            color: #007bff;
         }
 
 
@@ -161,12 +149,6 @@
                 margin-bottom: 15px;
                 width: 98%;
             }
-
-            #route-creator-container {
-                padding: 15px;
-                width: 98%;
-            }
-
 
             button, select, input[type="text"], input[type="time"] {
                 font-size: 1em;
@@ -187,7 +169,6 @@
     <div id="main-container">
         <div id="navigation-page">
             <h2>Navegación</h2>
-            <button id="creator-button">Crear Ruta</button>
 
             <label for="route-select">Seleccionar Ruta:</label>
             <select id="route-select">
@@ -207,30 +188,28 @@
                 <button id="prev-stop-button">Parada Anterior</button>
                 <button id="skip-stop-button">Saltar Parada</button>
             </div>
-        </div>
 
-        <div id="route-creator-container">
-            <h3>Creador de Ruta</h3>
-            <input type="text" id="route-name-input" placeholder="Nombre de la Ruta">
-            <div id="map"></div>
-            <div id="stop-form">
-                <input type="text" id="stop-name" placeholder="Nombre de la Parada">
-                <input type="time" id="scheduled-time-arrival" placeholder="Horario de Llegada (HH:MM)">
-                <input type="time" id="scheduled-time-departure" placeholder="Horario de Salida (HH:MM) - Opcional">
-                <button id="add-stop-button">Agregar Parada</button>
+            <div id="route-creator-container">
+                <h3>Creador de Ruta</h3>
+                <div id="map"></div>
+                <div id="stop-form">
+                    <input type="text" id="stop-name" placeholder="Nombre de la Parada">
+                    <input type="time" id="scheduled-time-arrival" placeholder="Horario de Llegada (HH:MM)">
+                    <input type="time" id="scheduled-time-departure" placeholder="Horario de Salida (HH:MM) - Opcional">
+                    <button id="add-stop-button">Agregar Parada</button>
+                </div>
+                <ul id="stop-list"></ul>
+                <button id="save-route-button">Guardar Ruta</button>
+                <button id="clear-route-button">Limpiar Ruta</button>
             </div>
-            <ul id="stop-list"></ul>
-            <button id="save-route-button">Guardar Ruta</button>
-            <button id="cancel-route-creation-button">Cancelar Creación de Ruta</button>
+
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        const creatorButton = document.getElementById('creator-button');
         const navigationPage = document.getElementById('navigation-page');
         const routeCreatorContainer = document.getElementById('route-creator-container');
-        const routeNameInput = document.getElementById('route-name-input');
         const mapDiv = document.getElementById('map');
         const stopNameInput = document.getElementById('stop-name');
         const scheduledTimeArrivalInput = document.getElementById('scheduled-time-arrival');
@@ -238,7 +217,7 @@
         const addStopButton = document.getElementById('add-stop-button');
         const stopList = document.getElementById('stop-list');
         const saveRouteButton = document.getElementById('save-route-button');
-        const cancelRouteCreationButton = document.getElementById('cancel-route-creation-button');
+        const clearRouteButton = document.getElementById('clear-route-button');
         const routeSelect = document.getElementById('route-select');
         const deleteRouteButton = document.getElementById('delete-route-button');
         const timeDiffValueDisplay = document.getElementById('time-diff-value');
@@ -262,23 +241,15 @@
 
         // --- Route Management Functions ---
         function saveRoute() {
-            const routeName = routeNameInput.value.trim();
-            if (!routeName) {
-                alert("Por favor, ingresa un nombre para la ruta.");
-                return;
+            const routeName = prompt("Nombre para guardar la ruta:");
+            if (routeName) {
+                const routes = JSON.parse(localStorage.getItem('busRoutes') || '[]');
+                routes.push({ name: routeName, stops: stops });
+                localStorage.setItem('busRoutes', JSON.stringify(routes));
+                loadRoutes();
+                clearCreatorData();
+                alert(`Ruta "${routeName}" guardada!`);
             }
-            if (stops.length < 2) {
-                alert("Por favor, agrega al menos 2 paradas a la ruta.");
-                return;
-            }
-
-            const routes = JSON.parse(localStorage.getItem('busRoutes') || '[]');
-            routes.push({ name: routeName, stops: stops });
-            localStorage.setItem('busRoutes', JSON.stringify(routes));
-            loadRoutes();
-            clearCreatorData();
-            alert(`Ruta "${routeName}" guardada!`);
-            showNavigationPage();
         }
 
         function loadRoutes() {
@@ -425,7 +396,6 @@
             stopList.innerHTML = '';
             routeMarkers.forEach(marker => map.removeLayer(marker));
             routeMarkers = [];
-            routeNameInput.value = '';
         }
 
 
@@ -537,4 +507,25 @@
 
 
         function calculateTimeDifference(stop) {
-            if (!stop || !stop.scheduledArrivalTime || currentLatitude
+            if (!stop || !stop.scheduledArrivalTime || currentLatitude === undefined || currentLongitude === undefined) {
+                timeDiffValueDisplay.textContent = "--:--";
+                return;
+            }
+
+            const scheduledTimeStr = stop.scheduledArrivalTime;
+            const scheduledTimeParts = scheduledTimeStr.split(':');
+            const scheduledHour = parseInt(scheduledTimeParts[0]);
+            const scheduledMinute = parseInt(scheduledTimeParts[1]);
+
+            const scheduledDate = new Date();
+            scheduledDate.setHours(scheduledHour, scheduledMinute, 0, 0);
+
+            const now = new Date();
+            const timeDiffMs = scheduledDate.getTime() - now.getTime();
+            const timeDiffSeconds = Math.round(timeDiffMs / 1000);
+
+            const minutes = Math.floor(Math.abs(timeDiffSeconds) / 60);
+            const seconds = Math.abs(timeDiffSeconds) % 60;
+            const sign = timeDiffSeconds >= 0 ? '+' : '-';
+
+            const formattedTimeDiff = `${sign}${String(minutes).padSt
