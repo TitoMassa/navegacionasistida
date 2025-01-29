@@ -2,21 +2,21 @@
 <html>
 <head>
     <title>Smart Move</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- For mobile responsiveness -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
         body {
             font-family: sans-serif;
-            margin: 0; /* Remove default body margin for full-width */
+            margin: 0;
             padding: 0;
-            background-color: #f4f4f4; /* Light background color */
-            color: #333; /* Darker text color */
+            background-color: #f4f4f4;
+            color: #333;
         }
 
         h1 {
             text-align: center;
             padding: 20px 0;
-            background-color: #007bff; /* Primary color */
+            background-color: #007bff;
             color: white;
             margin: 0;
         }
@@ -30,25 +30,25 @@
 
         #navigation-page, #creator-page {
             padding: 20px;
-            border: 1px solid #ddd; /* Lighter border */
+            border: 1px solid #ddd;
             margin-bottom: 20px;
-            background-color: white; /* White container background */
-            border-radius: 8px; /* Rounded corners */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
-            width: 95%; /* Take up most of the screen width */
-            max-width: 600px; /* Limit width on larger screens */
-            box-sizing: border-box; /* Include padding in width calculation */
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 95%;
+            max-width: 600px;
+            box-sizing: border-box;
         }
 
         #navigation-page h2, #creator-page h2 {
             text-align: center;
-            color: #007bff; /* Primary color for headings */
+            color: #007bff;
         }
 
         button {
             padding: 10px 15px;
             border: none;
-            background-color: #007bff; /* Primary button color */
+            background-color: #007bff;
             color: white;
             border-radius: 5px;
             cursor: pointer;
@@ -58,7 +58,7 @@
         }
 
         button:hover {
-            background-color: #0056b3; /* Darker shade on hover */
+            background-color: #0056b3;
         }
 
         select, input[type="text"], input[type="time"] {
@@ -66,18 +66,18 @@
             margin-bottom: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            width: calc(100% - 22px); /* Adjust width for padding and border */
+            width: calc(100% - 22px);
             box-sizing: border-box;
         }
 
         #stop-list li {
             margin-bottom: 5px;
             padding: 8px;
-            border-bottom: 1px solid #eee; /* Very light border for list items */
+            border-bottom: 1px solid #eee;
         }
 
         #stop-list li:last-child {
-            border-bottom: none; /* Remove border from last item */
+            border-bottom: none;
         }
 
         #map {
@@ -88,13 +88,30 @@
         }
 
         #time-difference {
-            font-size: 1.2em;
+            font-size: 1.5em; /* Increased size for time difference */
             font-weight: bold;
-            margin-top: 15px;
             text-align: center;
+            margin-bottom: 10px; /* Added margin below time difference */
         }
 
-        /* Mobile specific styles (adjust breakpoints as needed) */
+        #next-stop-info {
+            display: flex; /* Use flexbox for layout */
+            justify-content: space-between; /* Space between name and time */
+            font-size: 1.1em; /* Slightly larger font for next stop info */
+            padding: 10px 0;
+            border-top: 1px solid #eee; /* Separator line */
+        }
+
+        #next-stop-name {
+            text-align: left; /* Align name to the left */
+        }
+
+        #next-stop-time {
+            text-align: right; /* Align time to the right */
+            font-weight: bold; /* Make time bold for emphasis */
+        }
+
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 1.5em;
@@ -104,15 +121,18 @@
             #navigation-page, #creator-page {
                 padding: 15px;
                 margin-bottom: 15px;
-                width: 98%; /* Take more width on smaller screens */
+                width: 98%;
             }
 
             button, select, input[type="text"], input[type="time"] {
-                font-size: 1em; /* Keep font size consistent on mobile */
+                font-size: 1em;
             }
 
             #time-difference {
-                font-size: 1.3em;
+                font-size: 1.5em;
+            }
+            #next-stop-info {
+                font-size: 1.1em;
             }
         }
     </style>
@@ -132,7 +152,12 @@
             <button id="delete-route-button">Eliminar Ruta</button>
 
             <div id="time-difference">
-                Diferencia de Tiempo: <span id="time-diff-value">--:--</span>
+                <span id="time-diff-value">--:--</span>
+            </div>
+
+            <div id="next-stop-info">
+                <span id="next-stop-name">Próxima Parada: --</span>
+                <span id="next-stop-time">--:--</span>
             </div>
         </div>
 
@@ -165,15 +190,18 @@
         const routeSelect = document.getElementById('route-select');
         const deleteRouteButton = document.getElementById('delete-route-button');
         const timeDiffValueDisplay = document.getElementById('time-diff-value');
+        const nextStopNameDisplay = document.getElementById('next-stop-name');
+        const nextStopTimeDisplay = document.getElementById('next-stop-time');
+
 
         let map;
         let stops = [];
         let currentRouteName = '';
         let watchId;
         let currentRouteStopsForNavigation = [];
-        let currentLatitude; // Store current latitude
-        let currentLongitude; // Store current longitude
-        let timeDifferenceInterval; // Variable to hold the interval ID
+        let currentLatitude;
+        let currentLongitude;
+        let timeDifferenceInterval;
 
 
         // --- Route Management Functions ---
@@ -311,14 +339,18 @@
 
             watchId = navigator.geolocation.watchPosition(success, error, options);
 
-            // Set interval to update time difference every 5 seconds
+            // Set interval to update time difference and next stop every 5 seconds
             timeDifferenceInterval = setInterval(function() {
                 if (currentLatitude !== undefined && currentLongitude !== undefined && currentRouteStopsForNavigation && currentRouteStopsForNavigation.length > 0) {
                     calculateTimeDifference(currentLatitude, currentLongitude);
                 } else if (!currentRouteStopsForNavigation || currentRouteStopsForNavigation.length === 0) {
-                    timeDiffValueDisplay.textContent = "Ruta no seleccionada";
+                    timeDiffValueDisplay.textContent = "--:--";
+                    nextStopNameDisplay.textContent = "Próxima Parada: --";
+                    nextStopTimeDisplay.textContent = "--:--";
                 } else {
                     timeDiffValueDisplay.textContent = "Obteniendo ubicación...";
+                    nextStopNameDisplay.textContent = "Próxima Parada: --";
+                    nextStopTimeDisplay.textContent = "--:--";
                 }
             }, 5000); // 5000 milliseconds = 5 seconds
         }
@@ -344,8 +376,16 @@
 
                 const formattedTimeDiff = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
                 timeDiffValueDisplay.textContent = formattedTimeDiff;
+
+                // Update Next Stop Info
+                nextStopNameDisplay.textContent = `Próxima Parada: ${firstStop.name}`;
+                nextStopTimeDisplay.textContent = `${firstStop.scheduledTime}`;
+
+
             } else {
                 timeDiffValueDisplay.textContent = "--:--";
+                nextStopNameDisplay.textContent = "Próxima Parada: --";
+                nextStopTimeDisplay.textContent = "--:--";
             }
         }
 
@@ -356,7 +396,7 @@
                 watchId = null;
             }
             if (timeDifferenceInterval) {
-                clearInterval(timeDifferenceInterval); // Clear the interval
+                clearInterval(timeDifferenceInterval);
                 timeDifferenceInterval = null;
             }
         }
@@ -367,15 +407,15 @@
             navigationPage.style.display = 'none';
             creatorPage.style.display = 'block';
             initMap();
-            stopNavigation(); // Stop navigation when going to creator
+            stopNavigation();
         }
 
         function showNavigationPage() {
             creatorPage.style.display = 'none';
             navigationPage.style.display = 'block';
-            stopNavigation(); // Stop previous navigation if any
+            stopNavigation();
             loadRoutes();
-            startNavigation(); // Start navigation when going to navigation page
+            startNavigation();
         }
 
 
