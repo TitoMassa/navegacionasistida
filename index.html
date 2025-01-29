@@ -272,7 +272,7 @@
                     currentRouteStopsForNavigation = selectedRoute.stops;
                     currentStopIndex = -1;
                     nextStopIndex = 0;
-                    updateNavigationDisplay(currentLatitude, currentLongitude); // Initial display update
+                    updateNavigationDisplay(currentLatitude, currentLongitude);
                 }
             }
         }
@@ -515,8 +515,8 @@
         function skipToNextStop() {
             if (currentRouteStopsForNavigation.length > 0 && nextStopIndex < currentRouteStopsForNavigation.length - 1) {
                 nextStopIndex++;
-                currentStopIndex = -1; // Reset current stop as we are skipping
-                updateNavigationDisplay(currentLatitude, currentLongitude); // Update display immediately
+                currentStopIndex = -1;
+                updateNavigationDisplay(currentLatitude, currentLongitude);
             } else if (nextStopIndex >= currentRouteStopsForNavigation.length - 1) {
                 alert("Ya estás en la última parada.");
             } else {
@@ -527,5 +527,7 @@
         function goToPreviousStop() {
             if (currentRouteStopsForNavigation.length > 0 && nextStopIndex > 0) {
                 nextStopIndex--;
-                currentStopIndex = -1; // Reset current stop
-           
+                currentStopIndex = -1;
+                updateNavigationDisplay(currentLatitude, currentLongitude);
+            } else if (nextStopIndex <= 0) {
+         
