@@ -155,4 +155,9 @@ window.addEventListener("visibilitychange", function() {
     if (document.hidden) {
         alert("Para un mejor funcionamiento, mantén la aplicación abierta.");
     }
+window.addEventListener("visibilitychange", function() {
+    if (document.hidden) {
+        alert("Para un mejor funcionamiento, mantén la aplicación abierta.");
+    }
+});
 });
