@@ -202,8 +202,8 @@
         let currentLatitude;
         let currentLongitude;
         let timeDifferenceInterval;
-        let currentStopIndex = -1; // Index of the current stop, -1 means not at any stop
-        let nextStopIndex = 0; // Index of the next stop in the route
+        let currentStopIndex = -1;
+        let nextStopIndex = 0;
 
 
         // --- Route Management Functions ---
@@ -256,8 +256,8 @@
                     console.log("Ruta seleccionada:", selectedRoute);
                     alert(`Ruta "${selectedRoute.name}" seleccionada. Navegación lista.`);
                     currentRouteStopsForNavigation = selectedRoute.stops;
-                    currentStopIndex = -1; // Reset current stop
-                    nextStopIndex = 0; // Start from the first stop
+                    currentStopIndex = -1;
+                    nextStopIndex = 0;
                 }
             }
         }
@@ -289,7 +289,7 @@
             }
             const stopName = stopNameInput.value.trim();
             const scheduledTimeArrival = scheduledTimeArrivalInput.value;
-            const scheduledTimeDeparture = scheduledTimeDepartureInput.value; // Optional
+            const scheduledTimeDeparture = scheduledTimeDepartureInput.value;
 
             const latlng = map.tempLatLng;
 
@@ -299,7 +299,7 @@
                     lat: latlng.lat,
                     lng: latlng.lng,
                     scheduledArrivalTime: scheduledTimeArrival,
-                    scheduledDepartureTime: scheduledTimeDeparture // Could be undefined
+                    scheduledDepartureTime: scheduledTimeDeparture
                 };
                 stops.push(newStop);
                 updateStopListDisplay();
@@ -338,7 +338,6 @@
             function success(position) {
                 currentLatitude = position.coords.latitude;
                 currentLongitude = position.coords.longitude;
-                // No need to call calculateTimeDifference directly here anymore, interval will handle it
             }
 
             function error() {
@@ -353,7 +352,6 @@
 
             watchId = navigator.geolocation.watchPosition(success, error, options);
 
-            // Set interval to update time difference and next stop every 5 seconds
             timeDifferenceInterval = setInterval(function() {
                 if (currentLatitude !== undefined && currentLongitude !== undefined && currentRouteStopsForNavigation && currentRouteStopsForNavigation.length > 0) {
                     updateNavigationDisplay(currentLatitude, currentLongitude);
@@ -366,48 +364,53 @@
                     nextStopNameDisplay.textContent = "--";
                     nextStopTimeDisplay.textContent = "--:--";
                 }
-            }, 5000); // 5000 milliseconds = 5 seconds
+            }, 5000);
         }
 
         function updateNavigationDisplay(currentLat, currentLng) {
             if (currentRouteStopsForNavigation.length > 0) {
                 let nextStop = currentRouteStopsForNavigation[nextStopIndex];
-                if (!nextStop) { // Reached the end of route?
+                let stopToDisplay = nextStop; // Initially assume next stop is the one to display
+
+                if (!nextStop) {
                     timeDiffValueDisplay.textContent = "Fin de ruta";
                     nextStopNameDisplay.textContent = "--";
                     nextStopTimeDisplay.textContent = "--:--";
                     return;
                 }
 
-                const distanceToNextStop = calculateDistance(currentLat, currentLng, nextStop.lat, nextStop.lng);
-
                 if (currentStopIndex !== -1) { // Currently at a stop
                     const currentStop = currentRouteStopsForNavigation[currentStopIndex];
                     const distanceToCurrentStop = calculateDistance(currentLat, currentLng, currentStop.lat, currentStop.lng);
-                    if (distanceToCurrentStop > 10) { // Departed from current stop (10m radius)
-                        currentStopIndex = -1; // Reset current stop
-                        nextStopIndex++; // Move to the next stop in route
-                        if (nextStopIndex >= currentRouteStopsForNavigation.length) { // Reached end of route
+                    if (distanceToCurrentStop > 10) { // Departed from current stop
+                        currentStopIndex = -1;
+                        nextStopIndex++;
+                        if (nextStopIndex >= currentRouteStopsForNavigation.length) {
                             timeDiffValueDisplay.textContent = "Fin de ruta";
                             nextStopNameDisplay.textContent = "--";
                             nextStopTimeDisplay.textContent = "--:--";
                             return;
                         }
                         nextStop = currentRouteStopsForNavigation[nextStopIndex]; // Update next stop
+                        stopToDisplay = nextStop; // Display info for the new next stop
                     } else {
-                        nextStop = currentStop; // Still at current stop, use it as 'next' for display.
+                        stopToDisplay = currentStop; // If still at stop or just departed but < 10m, display info for the CURRENT stop
                     }
-                } else if (distanceToNextStop <= 5) { // Arrived at next stop (5m radius)
-                    currentStopIndex = nextStopIndex; // Set current stop index
-                    // nextStopIndex++; // Do not increment yet, stay at this stop until departed
-                    nextStop = currentRouteStopsForNavigation[currentStopIndex]; // Update next stop to current.
+                } else { // Not at a stop
+                    const distanceToNextStop = calculateDistance(currentLat, currentLng, nextStop.lat, nextStop.lng);
+                    if (distanceToNextStop <= 5) { // Arrived at next stop
+                        currentStopIndex = nextStopIndex;
+                        stopToDisplay = nextStop; // Display info for the current stop we just arrived at
+                    } else {
+                        stopToDisplay = nextStop; // Still navigating towards next stop, display info for the NEXT stop
+                    }
                 }
 
 
-                if (nextStop) {
-                    calculateTimeDifference(nextStop); // Pass the next stop object
-                    nextStopNameDisplay.textContent = nextStop.name; // Just show stop name
-                    nextStopTimeDisplay.textContent = nextStop.scheduledArrivalTime; // Show arrival time
+                if (stopToDisplay) { // Use stopToDisplay to calculate time difference and display info
+                    calculateTimeDifference(stopToDisplay);
+                    nextStopNameDisplay.textContent = stopToDisplay.name;
+                    nextStopTimeDisplay.textContent = stopToDisplay.scheduledArrivalTime;
                 } else {
                     timeDiffValueDisplay.textContent = "--:--";
                     nextStopNameDisplay.textContent = "--";
@@ -423,13 +426,13 @@
         }
 
 
-        function calculateTimeDifference(nextStop) {
-            if (!nextStop || !nextStop.scheduledArrivalTime) {
+        function calculateTimeDifference(stop) { // Now takes 'stop' as argument
+            if (!stop || !stop.scheduledArrivalTime) {
                 timeDiffValueDisplay.textContent = "--:--";
                 return;
             }
 
-            const scheduledTimeStr = nextStop.scheduledArrivalTime;
+            const scheduledTimeStr = stop.scheduledArrivalTime;
             const scheduledTimeParts = scheduledTimeStr.split(':');
             const scheduledHour = parseInt(scheduledTimeParts[0]);
             const scheduledMinute = parseInt(scheduledTimeParts[1]);
@@ -462,7 +465,6 @@
         }
 
 
-        // --- Page Visibility Functions ---
         function showCreatorPage() {
             navigationPage.style.display = 'none';
             creatorPage.style.display = 'block';
@@ -479,10 +481,9 @@
         }
 
 
-        // --- Helper Functions ---
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // metres
-            const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI/180;
             const φ2 = lat2 * Math.PI/180;
             const Δφ = (lat2-lat1) * Math.PI/180;
             const Δλ = (lon2-lon1) * Math.PI/180;
@@ -492,7 +493,7 @@
                     Math.sin(Δλ/2) * Math.sin(Δλ/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-            const d = R * c; // in metres
+            const d = R * c;
             return d;
         }
 
