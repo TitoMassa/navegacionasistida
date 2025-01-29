@@ -134,3 +134,8 @@ document.getElementById("delete-route").addEventListener("click", function () {
     alert("Ruta eliminada.");
     location.reload(); // Recargar la página para actualizar la lista de rutas
 });
+window.addEventListener("visibilitychange", function() {
+    if (document.hidden) {
+        alert("Para un mejor funcionamiento, mantén la aplicación abierta.");
+    }
+});
