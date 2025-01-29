@@ -5,92 +5,205 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Move</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
+            box-sizing: border-box;
             margin: 0;
-            padding: 20px;
-            background-color: #f0f0f0;
+            padding: 0;
         }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
         #map {
             height: 400px;
-            border-radius: 8px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .status-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 20px;
         }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
+
+        .time-display {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2c3e50;
         }
-        .status {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        .status-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 20px;
         }
-        .stop-list {
-            background-color: white;
-            padding: 20px;
+
+        .next-stop-info {
+            background: #f8f9fa;
+            padding: 15px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #45a049;
+        }
+
+        .btn-secondary {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #0056b3;
+        }
+
+        .stops-list {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
         .stop-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
         }
-        .controls {
-            margin-top: 20px;
+
+        .stop-item:last-child {
+            border-bottom: none;
+        }
+
+        .stop-actions {
             display: flex;
             gap: 10px;
         }
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            background-color: #4CAF50;
+
+        .stop-actions button {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.5);
             color: white;
-            cursor: pointer;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 1000;
         }
-        button:hover {
-            background-color: #45a049;
-        }
-        .time-display {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
+
+        .gps-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Smart Move</h1>
-        <div id="map"></div>
         
-        <div class="status">
-            <h3>Estado actual</h3>
-            <div class="time-display" id="time-diff">--:--</div>
-            <div id="next-stop">Próxima parada: -</div>
-            <div class="controls">
-                <button onclick="previousStop()">Parada anterior</button>
-                <button onclick="nextStop()">Saltar parada</button>
+        <div id="map"></div>
+
+        <div class="status-container">
+            <div class="status-header">
+                <h2>Estado actual</h2>
+                <div class="gps-status">
+                    <i class="fas fa-gps-dot"></i>
+                    <span id="gps-status-text">Conectando GPS...</span>
+                </div>
+            </div>
+
+            <div class="time-display-container">
+                <div class="time-display">--:--</div>
+            </div>
+
+            <div class="status-details">
+                <div class="next-stop-info">
+                    <h3>Próxima parada:</h3>
+                    <p id="next-stop-name">-</p>
+                    <p id="next-stop-time">-</p>
+                </div>
+                <div class="controls">
+                    <button class="btn btn-primary" onclick="previousStop()">Anterior</button>
+                    <button class="btn btn-primary" onclick="nextStop()">Saltar</button>
+                </div>
             </div>
         </div>
 
-        <div class="stop-list">
-            <h3>Lista de paradas</h3>
+        <div class="stops-list">
+            <h2>Lista de paradas</h2>
             <ul id="stops-list"></ul>
         </div>
 
         <div class="controls">
-            <button onclick="addStop()">Agregar parada</button>
-            <button onclick="clearRoute()">Limpiar ruta</button>
-            <button onclick="saveRoute()">Guardar ruta</button>
-            <button onclick="loadRoute()">Cargar ruta</button>
+            <button class="btn btn-secondary" onclick="addStop()">Agregar parada</button>
+            <button class="btn btn-secondary" onclick="clearRoute()">Limpiar ruta</button>
+            <button class="btn btn-secondary" onclick="saveRoute()">Guardar ruta</button>
+            <button class="btn btn-secondary" onclick="loadRoute()">Cargar ruta</button>
         </div>
     </div>
+
+    <div class="loading" id="loading">Cargando...</div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
@@ -99,10 +212,18 @@
         let currentStopIndex = 0;
         let watchId;
 
-        // Inicializar el mapa
+        // Mejorar la interfaz
         function initMap() {
             map = L.map('map').setView([0, 0], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            
+            // Agregar marcador personalizado
+            const DefaultIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41]
+            });
+            L.Marker.prototype.options.icon = DefaultIcon;
         }
 
         // Actualizar diferencia de tiempo
@@ -120,7 +241,7 @@
             const seconds = Math.floor((diff % 60000) / 1000);
             
             const sign = diff === scheduledTime - now ? '+' : '-';
-            document.getElementById('time-diff').textContent = 
+            document.querySelector('.time-display').textContent = 
                 `${sign}${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
@@ -142,12 +263,13 @@
         // Actualizar display de proxima parada
         function updateNextStopDisplay() {
             if (currentStopIndex >= currentRoute.length) {
-                document.getElementById('next-stop').textContent = 'Próxima parada: -';
+                document.getElementById('next-stop-name').textContent = '-';
+                document.getElementById('next-stop-time').textContent = '-';
                 return;
             }
             const nextStop = currentRoute[currentStopIndex];
-            document.getElementById('next-stop').textContent = 
-                `Próxima parada: ${nextStop.name} - ${new Date(nextStop.time).toLocaleTimeString()}`;
+            document.getElementById('next-stop-name').textContent = nextStop.name;
+            document.getElementById('next-stop-time').textContent = new Date(nextStop.time).toLocaleTimeString();
         }
 
         // Funcionalidades de las paradas
@@ -181,7 +303,7 @@
                     });
                     
                     updateStopsList();
-                    map.removeLayer(L.marker(e.latlng).addTo(map));
+                    L.marker(e.latlng).addTo(map);
                 }
             });
         }
@@ -194,9 +316,13 @@
                 const li = document.createElement('li');
                 li.className = 'stop-item';
                 li.innerHTML = `
-                    ${stop.name} 
-                    <span>${new Date(stop.time).toLocaleString()}</span>
-                    <button onclick="removeStop(${index})">Eliminar</button>
+                    <div class="stop-info">
+                        <strong>${stop.name}</strong>
+                        <small>${new Date(stop.time).toLocaleString()}</small>
+                    </div>
+                    <div class="stop-actions">
+                        <button onclick="removeStop(${index})"><i class="fas fa-trash"></i></button>
+                    </div>
                 `;
                 stopsList.appendChild(li);
             });
@@ -238,11 +364,15 @@
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(
                     function(position) {
+                        document.getElementById('gps-status-text').textContent = 
+                            `Ubicación actual: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
                         checkNextStop();
                         update_time_diff();
                     },
                     function(error) {
                         console.error('Error de geolocalización:', error);
+                        document.getElementById('gps-status-text').textContent = 
+                            'Error de geolocalización. Verifique su conexión GPS.';
                     },
                     {
                         enableHighAccuracy: true,
