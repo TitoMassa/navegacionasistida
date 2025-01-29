@@ -1,4 +1,4 @@
-// Obtener rutas almacenadas (simulado, se debe conectar a una base de datos)
+// Simulación de rutas guardadas (debería venir de un backend o almacenamiento local)
 const storedRoutes = [
     {
         name: "Ruta 1",
@@ -13,15 +13,35 @@ const storedRoutes = [
 let map = L.map('map').setView([0, 0], 15);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 let marker = L.marker([0, 0]).addTo(map);
+let watchId = null;
+let selectedRoute = null;
 
-// Mantener el GPS activo mientras la app esté abierta
-function startGPS() {
+// Cargar rutas en el selector
+function loadRoutes() {
+    let selector = document.getElementById("route-selector");
+    storedRoutes.forEach((route, index) => {
+        let option = document.createElement("option");
+        option.value = index;
+        option.textContent = route.name;
+        selector.appendChild(option);
+    });
+}
+
+// Iniciar GPS y calcular diferencia de tiempo
+function startNavigation() {
+    let selectedIndex = document.getElementById("route-selector").value;
+    selectedRoute = storedRoutes[selectedIndex];
+
+    if (!selectedRoute) {
+        alert("Selecciona una ruta primero.");
+        return;
+    }
+
     if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(position => {
+        watchId = navigator.geolocation.watchPosition(position => {
             let lat = position.coords.latitude;
             let lon = position.coords.longitude;
             document.getElementById("location").textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-
             marker.setLatLng([lat, lon]);
             map.setView([lat, lon], 15);
 
@@ -34,9 +54,17 @@ function startGPS() {
     }
 }
 
-// Calcular diferencia de tiempo con la parada más cercana en formato MM:SS
+// Detener la navegación
+function stopNavigation() {
+    if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        document.getElementById("time-difference").textContent = "Navegación detenida";
+    }
+}
+
+// Calcular diferencia de tiempo en formato MM:SS
 function calculateTimeDifference(lat, lon) {
-    let selectedRoute = storedRoutes[0]; // Se puede agregar selección de rutas en el futuro
     let closestStop = null;
     let minDistance = Infinity;
 
@@ -63,4 +91,9 @@ function calculateTimeDifference(lat, lon) {
     document.getElementById("time-difference").textContent = `${sign}${minutesDiff}:${secondsDiff}`;
 }
 
-startGPS();
+// Eventos para iniciar/detener navegación
+document.getElementById("start-navigation").addEventListener("click", startNavigation);
+document.getElementById("stop-navigation").addEventListener("click", stopNavigation);
+
+// Cargar rutas al iniciar
+loadRoutes();
