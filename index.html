@@ -1,321 +1,208 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Smart Move - Logistics</title>
+    <title>Smart Move</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
         body {
-            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
         }
-
-        .container {
-            max-width: 100%;
-            padding: 10px;
-        }
-
-        .header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 15px;
-            border-radius: 10px 10px 0 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
         #map {
-            height: 300px;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            height: 400px;
+            margin-bottom: 20px;
         }
-
-        .stops-list {
-            background-color: white;
-            padding: 10px;
-            border-radius: 10px;
-            margin: 10px 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
-
-        .stop-item {
-            padding: 10px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-            margin: 5px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .time-difference {
-            font-size: 24px;
-            font-weight: bold;
-            color: #2c3e50;
-            text-align: center;
-            margin: 15px 0;
-            padding: 10px;
-            background-color: #e8f4f8;
-            border-radius: 10px;
-        }
-
         .controls {
-            display: flex;
-            gap: 10px;
-            padding: 10px;
-            background-color: white;
-            border-radius: 10px;
-            margin: 10px 0;
-            justify-content: center;
-            flex-wrap: wrap;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
         }
-
         button {
-            background-color: #3498db;
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+            background: #007bff;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            border-radius: 3px;
         }
-
         button:hover {
-            background-color: #2980b9;
+            background: #0056b3;
         }
-
-        .floating-button {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            z-index: 1000;
-            background-color: #2ecc71;
-            padding: 15px;
-            border-radius: 50%;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        .stop-list {
+            list-style: none;
+            padding: 0;
         }
-
-        .loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        .stop-item {
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        #timeDifference {
+            font-size: 2em;
+            font-weight: bold;
             text-align: center;
-            display: none;
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 5px;
-            }
-            
-            .header {
-                padding: 10px;
-            }
-
-            button {
-                padding: 8px 16px;
-                font-size: 14px;
-            }
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Smart Move</h1>
-            <p>Logística Inteligente en Movimiento</p>
-        </div>
-
-        <div class="loading">
-            <i class="fas fa-spinner fa-spin fa-3x"></i>
-            <p>Cargando...</p>
-        </div>
-
-        <div id="map"></div>
-
-        <div class="stops-list">
-            <h3>Paradas de la Ruta</h3>
-            <ul id="stopsList"></ul>
-        </div>
-
-        <div class="time-difference">
-            <div id="timeDiff">--:--</div>
-            <div id="nextStop"></div>
-        </div>
-
+    <h1>Smart Move</h1>
+    <div id="map"></div>
+    <div class="grid-container">
         <div class="controls">
-            <button onclick="previousStop()">
-                <i class="fas fa-chevron-left"></i> Anterior
-            </button>
-            <button onclick="nextStop()">
-                Siguiente <i class="fas fa-chevron-right"></i>
-            </button>
-            <button onclick="saveRoute()">
-                <i class="fas fa-save"></i> Guardar
-            </button>
-            <button onclick="deleteRoute()" style="background-color: #e74c3c;">
-                <i class="fas fa-trash"></i> Eliminar
-            </button>
+            <button onclick="startCreatingRoute()">Nueva Ruta</button>
+            <button onclick="saveRoute()">Guardar Ruta</button>
+            <select id="savedRoutes" onchange="loadRoute(this.value)"></select>
+            <button onclick="deleteRoute()">Eliminar Ruta</button>
+            <ul id="stopsList" class="stop-list"></ul>
+        </div>
+        <div>
+            <div id="timeDifference">--:--</div>
+            <div id="navigationInfo">
+                <button onclick="previousStop()">Parada Anterior</button>
+                <button onclick="nextStop()">Siguiente Parada</button>
+            </div>
         </div>
     </div>
 
-    <button class="floating-button" onclick="addStop()">
-        <i class="fas fa-map-marker-alt"></i>
-    </button>
-
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        let map;
-        let currentRoute = [];
-        let currentStop = 0;
-        let interval;
-        let loadingElement = document.querySelector('.loading');
+        let map, currentRoute = {}, currentPosition, watchId;
+        let creatingRoute = false;
+        let routes = JSON.parse(localStorage.getItem('routes') || '[]');
+        let currentStopIndex = 0;
 
-        // Inicializar el mapa
+        // Inicializar mapa
         function initMap() {
-            if (navigator.geolocation) {
-                loadingElement.style.display = 'block';
-                navigator.geolocation.getCurrentPosition(position => {
-                    loadingElement.style.display = 'none';
-                    const latlng = new L.LatLng(position.coords.latitude, position.coords.longitude);
-                    map = L.map('map').setView(latlng, 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            map = L.map('map').setView([19.4326, -99.1332], 13); // Coordenadas iniciales CDMX
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            
+            map.on('click', (e) => {
+                if(creatingRoute) addStopToRoute(e.latlng);
+            });
+        }
 
-                    // Agregar click listener para crear paradas
-                    map.on('click', function(e) {
-                        addStop(e.latlng);
-                    });
+        // Administración de rutas
+        function startCreatingRoute() {
+            creatingRoute = true;
+            currentRoute = {stops: []};
+            document.getElementById('stopsList').innerHTML = '';
+        }
 
-                    interval = setInterval(updatePosition, 5000);
-                });
-            } else {
-                alert("La geolocalización no está soportada en este dispositivo.");
+        function addStopToRoute(latlng) {
+            const name = prompt('Nombre de la parada:');
+            const time = prompt('Hora programada (HH:MM):');
+            currentRoute.stops.push({latlng, name, time});
+            updateStopsList();
+        }
+
+        function saveRoute() {
+            if(!currentRoute.stops?.length) return;
+            currentRoute.name = prompt('Nombre de la ruta:');
+            routes.push(currentRoute);
+            localStorage.setItem('routes', JSON.stringify(routes));
+            updateRoutesList();
+            creatingRoute = false;
+        }
+
+        function updateRoutesList() {
+            const select = document.getElementById('savedRoutes');
+            select.innerHTML = routes.map((r,i) => 
+                `<option value="${i}">${r.name}</option>`);
+        }
+
+        function loadRoute(index) {
+            currentRoute = routes[index];
+            currentStopIndex = 0;
+            startNavigation();
+        }
+
+        function deleteRoute() {
+            const index = document.getElementById('savedRoutes').value;
+            routes.splice(index, 1);
+            localStorage.setItem('routes', JSON.stringify(routes));
+            updateRoutesList();
+        }
+
+        // Navegación
+        function startNavigation() {
+            if(watchId) navigator.geolocation.clearWatch(watchId);
+            watchId = navigator.geolocation.watchPosition(position => {
+                currentPosition = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                updateTimeDifference();
+            }, console.error, {enableHighAccuracy: true});
+        }
+
+        function updateTimeDifference() {
+            if(!currentRoute.stops) return;
+            
+            const nextStop = currentRoute.stops[currentStopIndex];
+            const distance = getDistance(currentPosition, nextStop.latlng);
+            
+            if(distance < 20 && currentStopIndex < currentRoute.stops.length - 1) {
+                currentStopIndex++;
             }
+            
+            const scheduledTime = new Date();
+            const [hours, minutes] = nextStop.time.split(':');
+            scheduledTime.setHours(hours, minutes, 0);
+            
+            const diff = Math.floor((scheduledTime - new Date()) / 1000);
+            const sign = diff < 0 ? '-' : '+';
+            const mins = Math.abs(Math.floor(diff / 60)).toString().padStart(2, '0');
+            const secs = Math.abs(diff % 60).toString().padStart(2, '0');
+            
+            document.getElementById('timeDifference').textContent = `${sign}${mins}:${secs}`;
         }
 
-        // Agregar parada
-        function addStop(latlng) {
-            prompt('Ingrese el nombre de la parada:', '').then(name => {
-                prompt('Ingrese el horario programado (HH:mm):', '').then(time => {
-                    const [hours, minutes] = time.split(':').map(Number);
-                    const scheduledTime = new Date();
-                    scheduledTime.setHours(hours);
-                    scheduledTime.setMinutes(minutes);
-                    scheduledTime.setSeconds(0);
+        function getDistance(pos1, pos2) {
+            const R = 6371e3; // Radio de la Tierra en metros
+            const φ1 = pos1.lat * Math.PI/180;
+            const φ2 = pos2.lat * Math.PI/180;
+            const Δφ = (pos2.lat-pos1.lat) * Math.PI/180;
+            const Δλ = (pos2.lng-pos1.lng) * Math.PI/180;
 
-                    currentRoute.push({
-                        name: name,
-                        scheduledTime: scheduledTime,
-                        coords: [latlng.lat, latlng.lng]
-                    });
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-                    updateStopsList();
-                    L.marker(latlng).addTo(map);
-                });
-            });
+            return R * c;
         }
 
-        // Actualizar posición y calcular tiempo restante
-        function updatePosition() {
-            if (currentRoute.length === 0) return;
+        function previousStop() {
+            if(currentStopIndex > 0) currentStopIndex--;
+        }
 
-            navigator.geolocation.getCurrentPosition(position => {
-                const currentCoords = new L.LatLng(position.coords.latitude, position.coords.longitude);
-                const nextStopCoords = new L.LatLng(currentRoute[currentStop].coords[0], currentRoute[currentStop].coords[1]);
-                const distance = currentCoords.distanceTo(nextStopCoords);
-
-                const now = new Date();
-                const scheduledTime = new Date(currentRoute[currentStop].scheduledTime);
-                const diff = now.getTime() - scheduledTime.getTime();
-                
-                const minutes = Math.floor(Math.abs(diff) / 1000 / 60);
-                const seconds = Math.floor(Math.abs(diff) / 1000 % 60);
-                const timeDiff = `${diff < 0 ? '-' : '+'}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-                document.getElementById('timeDiff').textContent = timeDiff;
-                document.getElementById('nextStop').textContent = `Siguiente parada: ${currentRoute[currentStop].name} - ${scheduledTime.toLocaleTimeString()}`;
-            });
+        function nextStop() {
+            if(currentStopIndex < currentRoute.stops.length - 1) currentStopIndex++;
         }
 
         function updateStopsList() {
-            const stopsList = document.getElementById('stopsList');
-            stopsList.innerHTML = currentRoute.map((stop, index) => `
+            const list = document.getElementById('stopsList');
+            list.innerHTML = currentRoute.stops.map((stop, i) => `
                 <li class="stop-item">
-                    ${stop.name} - ${stop.scheduledTime.toLocaleTimeString()}
-                    <button onclick="deleteStop(${index})"><i class="fas fa-trash"></i></button>
+                    ${i+1}. ${stop.name} - ${stop.time}
                 </li>
             `).join('');
         }
 
-        function nextStop() {
-            if (currentStop < currentRoute.length - 1) {
-                currentStop++;
-                updatePosition();
-            }
-        }
-
-        function previousStop() {
-            if (currentStop > 0) {
-                currentStop--;
-                updatePosition();
-            }
-        }
-
-        function saveRoute() {
-            localStorage.setItem('currentRoute', JSON.stringify(currentRoute));
-            showToast('Ruta guardada correctamente');
-        }
-
-        function deleteRoute() {
-            if (confirm('¿Está seguro de eliminar la ruta?')) {
-                currentRoute = [];
-                updateStopsList();
-                localStorage.removeItem('currentRoute');
-                showToast('Ruta eliminada correctamente');
-            }
-        }
-
-        function deleteStop(index) {
-            if (confirm('¿Está seguro de eliminar esta parada?')) {
-                currentRoute.splice(index, 1);
-                updateStopsList();
-                showToast('Parada eliminada correctamente');
-            }
-        }
-
-        function showToast(message) {
-            const toast = document.createElement('div');
-            toast.textContent = message;
-            toast.style.position = 'fixed';
-            toast.style.bottom = '20px';
-            toast.style.right = '20px';
-            toast.style.backgroundColor = '#2ecc71';
-            toast.style.color = 'white';
-            toast.style.padding = '10px 20px';
-            toast.style.borderRadius = '25px';
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                document.body.removeChild(toast);
-            }, 3000);
-        }
-
-        // Inicializar la aplicación
-        window.onload = function() {
-            currentRoute = JSON.parse(localStorage.getItem('currentRoute') || '[]');
-            initMap();
-            updateStopsList();
-        };
+        // Inicialización
+        initMap();
+        updateRoutesList();
     </script>
 </body>
 </html>
