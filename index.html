@@ -1,180 +1,169 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Smart Move</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-    }
-    #map {
-      width: 100%;
-      height: 400px;
-      border: 1px solid #ccc;
-    }
-    #paradas {
-      padding: 10px;
-      border: 1px solid #ccc;
-    }
-    #paradas ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    #paradas li {
-      padding: 10px;
-      border-bottom: 1px solid #ccc;
-    }
-    #paradas li:last-child {
-      border-bottom: none;
-    }
-    #navegacion {
-      padding: 10px;
-      border: 1px solid #ccc;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Move</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        #map {
+            width: 100%;
+            height: 50%;
+        }
+
+        #status {
+            width: 100%;
+            height: 25%;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #stops {
+            width: 100%;
+            height: 25%;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .stop {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .name {
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-  <h1>Smart Move</h1>
-  <div id="map"></div>
-  <div id="paradas">
-    <h2>Paradas</h2>
-    <ul id="lista-paradas"></ul>
-  </div>
-  <div id="navegacion">
-    <h2>Navegación</h2>
-    <p id="diferencia-tiempo"></p>
-    <p id="proxima-parada"></p>
-    <button id="saltar-parada">Saltar parada</button>
-    <button id="volver-parada">Volver parada</button>
-  </div>
+    <div id="map"></div>
+    <div id="status">
+        <div id="time-difference"></div>
+        <div id="next-stop"></div>
+    </div>
+    <div id="stops"></div>
 
-  <script>
-    // Configuración de Leaflet
-    var map = L.map('map').setView([37.7749, -122.4194], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
-      subdomains: ['a', 'b', 'c']
-    }).addTo(map);
+    <script>
+        // Initialize variables
+        let map;
+        let currentPosition;
+        let currentStop;
+        let stops = [];
+        let route = null;
 
-    // Variables globales
-    var paradas = [];
-    var rutaActual = null;
-    var posicionActual = null;
-    var proximaParada = null;
+        // Initialize the map and GPS
+        function initMap() {
+            // Replace with your actual map initialization code
+            map = L.map('map').setView([0, 0], 13);
 
-    // Función para agregar paradas
-    function agregarParada(lat, lng) {
-      var parada = {
-        lat: lat,
-        lng: lng,
-        nombre: prompt('Ingrese el nombre de la parada'),
-        hora: prompt('Ingrese la hora programada de la parada (HH:MM)')
-      };
-      paradas.push(parada);
-      actualizarListaParadas();
-    }
+            // Request user's location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(setCurrentPosition, handleLocationError);
+            } else {
+                handleLocationError(console.error('Geolocation is not supported by this browser.'));
+            }
 
-    // Función para actualizar la lista de paradas
-    function actualizarListaParadas() {
-      var lista = document.getElementById('lista-paradas');
-      lista.innerHTML = '';
-      paradas.forEach(function(parada) {
-        var li = document.createElement('li');
-        li.textContent = parada.nombre + ' - ' + parada.hora;
-        lista.appendChild(li);
-      });
-    }
+            // Add a marker for the user's current position
+            function setCurrentPosition(position) {
+                currentPosition = position;
+                L.marker([currentPosition.coords.latitude, currentPosition.coords.longitude]).addTo(map);
+                calculateTimeDifference();
+            }
 
-    // Función para guardar la ruta
-    function guardarRuta() {
-      rutaActual = paradas;
-      localStorage.setItem('ruta', JSON.stringify(rutaActual));
-      alert('Ruta guardada');
-    }
+            // Handle location errors
+            function handleLocationError(error) {
+                console.error(error);
+            }
+        }
 
-    // Función para eliminar la ruta
-    function eliminarRuta() {
-      rutaActual = null;
-      localStorage.removeItem('ruta');
-      paradas = [];
-      actualizarListaParadas();
-      alert('Ruta eliminada');
-    }
+        // Calculate the time difference between the current time and the scheduled time for the next stop
+        function calculateTimeDifference() {
+            if (route && currentStop) {
+                const now = new Date();
+                const scheduledTime = new Date(currentStop.scheduledTime);
+                const timeDifference = Math.abs(now - scheduledTime);
+                const minutes = Math.floor(timeDifference / 60000);
+                const seconds = Math.floor((timeDifference % 60000) / 1000);
+                document.getElementById('time-difference').textContent = (timeDifference < 0 ? '-' : '+') + `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
 
-    // Función para navegar
-    function navegar() {
-      if (rutaActual) {
-        var posicion = navigator.geolocation.getCurrentPosition(function(position) {
-          posicionActual = position.coords;
-          var distancia = calcularDistancia(posicionActual.latitude, posicionActual.longitude, proximaParada.lat, proximaParada.lng);
-          var diferenciaTiempo = calcularDiferenciaTiempo(distancia, proximaParada.hora);
-          document.getElementById('diferencia-tiempo').textContent = diferenciaTiempo;
-          document.getElementById('proxima-parada').textContent = proximaParada.nombre + ' - ' + proximaParada.hora;
-        }, function(error) {
-          alert('Error al obtener la posición');
-        });
-      }
-    }
+        // Add a new stop to the route
+        function addStop(name, scheduledTime) {
+            const stop = {
+                name,
+                scheduledTime,
+                position: currentPosition
+            };
+            stops.push(stop);
+            updateStops();
+        }
 
-    // Función para calcular la distancia entre dos puntos
-    function calcularDistancia(lat1, lng1, lat2, lng2) {
-      var R = 6371; // Radio de la Tierra en km
-      var dLat = (lat2 - lat1) * Math.PI / 180;
-      var dLng = (lng2 - lng1) * Math.PI / 180;
-      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      var distancia = R * c;
-      return distancia;
-    }
+        // Update the list of stops
+        function updateStops() {
+            document.getElementById('stops').innerHTML = '';
+            stops.forEach((stop, index) => {
+                const stopElement = document.createElement('div');
+                stopElement.className = 'stop';
+                stopElement.innerHTML = `
+                    <span class="name">${stop.name}</span>
+                    <span>${new Date(stop.scheduledTime).toLocaleTimeString()}</span>
+                `;
+                stopElement.addEventListener('click', () => {
+                    currentStop = stop;
+                    calculateTimeDifference();
+                });
+                document.getElementById('stops').appendChild(stopElement);
+            });
+        }
 
-    // Función para calcular la diferencia de tiempo
-    function calcularDiferenciaTiempo(distancia, horaProgramada) {
-      var horaActual = new Date().getHours() + ':' + new Date().getMinutes();
-      var diferencia = calcularDiferenciaMinutos(horaActual, horaProgramada);
-      if (diferencia < 0) {
-        return '-' + Math.abs(diferencia).toString().padStart(2, '0') + ':' + Math.abs(diferencia % 60).toString().padStart(2, '0');
-      } else {
-        return '+' + Math.abs(diferencia).toString().padStart(2, '0') + ':' + Math.abs(diferencia % 60).toString().padStart(2, '0');
-      }
-    }
+        // Save the current route
+        function saveRoute() {
+            route = stops;
+            stops = [];
+            updateStops();
+        }
 
-    // Función para calcular la diferencia de minutos
-    function calcularDiferenciaMinutos(hora1, hora2) {
-      var minutos1 = parseInt(hora1.split(':')[0]) * 60 + parseInt(hora1.split(':')[1]);
-      var minutos2 = parseInt(hora2.split(':')[0]) * 60 + parseInt(hora2.split(':')[1]);
-      return minutos2 - minutos1;
-    }
+        // Load a saved route
+        function loadRoute(route) {
+            this.route = route;
+            stops = route;
+            updateStops();
+        }
 
-    // Eventos
-    map.on('click', function(e) {
-      agregarParada(e.latlng.lat, e.latlng.lng);
-    });
+        // Remove the current route
+        function removeRoute() {
+            route = null;
+            stops = [];
+            updateStops();
+        }
 
-    document.getElementById('saltar-parada').addEventListener('click', function() {
-      if (proximaParada) {
-        proximaParada = rutaActual[rutaActual.indexOf(proximaParada) + 1];
-        navegar();
-      }
-    });
-
-    document.getElementById('volver-parada').addEventListener('click', function() {
-      if (proximaParada) {
-        proximaParada = rutaActual[rutaActual.indexOf(proximaParada) - 1];
-        navegar();
-      }
-    });
-
-    document.getElementById('guardar-ruta').addEventListener('click', guardarRuta);
-    document.getElementById('eliminar-ruta').addEventListener('click', eliminarRuta);
-
-    // Inicialización
-    if (localStorage.getItem('ruta')) {
-      rutaActual = JSON.parse(localStorage.getItem('ruta'));
-      paradas = rutaActual;
-      actualizarListaParadas();
-    }
-
-    navegar();
-  </script>
+        // Initialize the application
+        initMap();
+    </script>
 </body>
 </html>
