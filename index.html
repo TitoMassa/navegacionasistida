@@ -3,325 +3,338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Move</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <title>Smart Move - Logística de Autobuses</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPvknGQwiViVtgsGaxGgE2SALgWPQTXw5Jo/aR7WPWIോട്ksXdhxnsMqa/MVdWVPdevg==" crossorigin=""/>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        #map {
-            height: 400px;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-        #controls, #navigation {
-            width: 90%;
-            max-width: 600px;
-            margin-bottom: 20px;
-        }
-        #controls button, #navigation button {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-        #stop-list {
-            width: 90%;
-            max-width: 600px;
-            margin-bottom: 20px;
-        }
-        .stop-item {
-            padding: 10px;
-            border-bottom: 1px solid #ccc;
-        }
-        #time-difference, #next-stop {
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-        #route-selector {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-        #coordinates {
-            font-size: 16px;
-            margin-top: 20px;
-        }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        #map-container { width: 100%; height: 400px; }
+        #stop-list { margin-top: 10px; padding: 10px; border: 1px solid #ccc; }
+        .stop-item { margin-bottom: 5px; }
+        #time-diff-display { font-size: 2em; text-align: center; margin: 20px 0; }
+        #next-stop-info { text-align: center; margin-bottom: 20px; }
+        .button-container { text-align: center; margin-bottom: 20px; }
+        button { padding: 10px 20px; margin: 0 10px; cursor: pointer; }
+        .hidden { display: none; }
+        #route-creation-panel, #navigation-panel { padding: 20px; }
+        #route-list-container { margin-top: 10px; }
+        #route-list { width: 100%; padding: 8px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
+
     <h1>Smart Move</h1>
-    <div id="map"></div>
-    <div id="controls">
-        <select id="route-selector">
-            <option value="">Seleccionar Ruta</option>
-        </select>
-        <button id="add-stop-btn">Agregar Parada</button>
-        <button id="save-route-btn">Guardar Ruta</button>
-        <button id="delete-route-btn">Eliminar Ruta</button>
-        <button id="start-navigation-btn">Iniciar Navegación</button>
-        <button id="stop-navigation-btn">Detener Navegación</button>
-    </div>
-    <div id="stop-list">
-        <h2>Paradas:</h2>
-        <ul id="stops"></ul>
-    </div>
-    <div id="navigation">
-        <h2>Navegación:</h2>
-        <p id="time-difference">Diferencia de Tiempo: </p>
-        <p id="next-stop">Próxima Parada: </p>
-        <button id="skip-stop-btn">Saltar Parada</button>
-        <button id="previous-stop-btn">Volver a Parada Anterior</button>
-    </div>
-    <div id="coordinates">
-        <h2>Coordenadas Actuales:</h2>
-        <p id="current-coordinates">Obteniendo ubicación...</p>
+
+    <div id="route-creation-panel">
+        <h2>Crear Ruta</h2>
+        <div id="map-container"></div>
+
+        <div id="stop-creation-form">
+            <h3>Agregar Parada</h3>
+            <input type="text" id="stop-name" placeholder="Nombre de Parada">
+            <input type="time" id="stop-time">
+            <button onclick="addStop()">Agregar Parada</button>
+        </div>
+
+        <div id="stop-list">
+            <h3>Paradas Agregadas</h3>
+            <ul id="stops-ul"></ul>
+        </div>
+
+        <div id="route-actions">
+            <input type="text" id="route-name" placeholder="Nombre de Ruta">
+            <button onclick="saveRoute()">Guardar Ruta</button>
+        </div>
+
+        <div id="route-list-container">
+            <h3>Rutas Guardadas</h3>
+            <select id="route-list"></select>
+            <button onclick="loadRoute()">Cargar Ruta</button>
+            <button onclick="deleteRoute()">Eliminar Ruta</button>
+        </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <div id="navigation-panel" class="hidden">
+        <h2>Navegación</h2>
+        <div id="time-diff-display">--:--</div>
+        <div id="next-stop-info">Próxima parada: <span id="next-stop-name"></span> - <span id="next-stop-time"></span></div>
+        <div class="button-container">
+            <button onclick="previousStop()">Parada Anterior</button>
+            <button onclick="skipStop()">Saltar Parada</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYM8mOzHVStnEQxvQ9mn程度+o+5erxVPxcOnoXyjRWRRr/RrFHbFhBmbyTuhLEejzl5gH/ErlhmcGsxkkoJw==" crossorigin=""></script>
     <script>
-        // Inicializar el mapa centrado en Corrientes, Argentina
-        var map = L.map('map').setView([-27.4692, -58.8307], 13);
+        let map;
+        let stops = [];
+        let currentRoute = null;
+        let currentStopIndex = 0;
+        let userLocationMarker = null;
+        let watchId = null;
+        let routes = {}; // Object to store routes, routeName: { stops: [], ... }
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+        function initMap() {
+            map = L.map('map-container').setView([-27.4606, -58.9843], 13); // Corrientes, Argentina
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
 
-        var stops = [];
-        var currentStopIndex = 0;
-        var navigationActive = false;
-        var navigationInterval;
-        var selectedRoute = null;
-        var userPosition = null;
-
-        // Cargar rutas guardadas
-        function loadRoutes() {
-            var routeSelector = document.getElementById('route-selector');
-            routeSelector.innerHTML = '<option value="">Seleccionar Ruta</option>';
-            var routes = JSON.parse(localStorage.getItem('routes')) || [];
-            routes.forEach(function(route, index) {
-                var option = document.createElement('option');
-                option.value = index;
-                option.textContent = `Ruta ${index + 1}`;
-                routeSelector.appendChild(option);
-            });
+            map.on('click', onMapClick);
         }
 
-        // Guardar ruta
-        function saveRoute() {
-            var routes = JSON.parse(localStorage.getItem('routes')) || [];
-            routes.push(stops);
-            localStorage.setItem('routes', JSON.stringify(routes));
-            loadRoutes();
-            alert('Ruta guardada');
-        }
-
-        // Cargar ruta seleccionada
-        function loadSelectedRoute() {
-            var routeSelector = document.getElementById('route-selector');
-            var index = routeSelector.value;
-            if (index !== '') {
-                var routes = JSON.parse(localStorage.getItem('routes')) || [];
-                stops = routes[index];
-                selectedRoute = index;
-                updateStopList();
-                map.eachLayer(function(layer) {
-                    if (layer instanceof L.Marker) {
-                        map.removeLayer(layer);
-                    }
-                });
-                stops.forEach(function(stop) {
-                    L.marker(stop.latlng).addTo(map).bindPopup(`Parada: ${stop.name}, Hora: ${stop.time}`).openPopup();
-                });
-                currentStopIndex = 0; // Reiniciar el índice de la parada actual
-                updateNavigationImmediately(); // Actualizar la navegación inmediatamente
+        function onMapClick(e) {
+            let stopName = prompt("Nombre de la parada:");
+            if (stopName) {
+                let stopTime = prompt("Horario programado (HH:MM):");
+                if (stopTime) {
+                    addStopToList({
+                        name: stopName,
+                        latlng: e.latlng,
+                        time: stopTime
+                    });
+                }
             }
         }
 
-        // Eliminar ruta seleccionada
-        function deleteSelectedRoute() {
-            if (selectedRoute !== null) {
-                var routes = JSON.parse(localStorage.getItem('routes')) || [];
-                routes.splice(selectedRoute, 1);
-                localStorage.setItem('routes', JSON.stringify(routes));
-                loadRoutes();
-                stops = [];
-                selectedRoute = null;
-                updateStopList();
-                map.eachLayer(function(layer) {
-                    if (layer instanceof L.Marker) {
-                        map.removeLayer(layer);
-                    }
-                });
-                alert('Ruta eliminada');
-            }
-        }
+        function addStop() {
+            const stopNameInput = document.getElementById('stop-name');
+            const stopTimeInput = document.getElementById('stop-time');
+            const stopName = stopNameInput.value.trim();
+            const stopTime = stopTimeInput.value;
 
-        map.on('click', function(e) {
-            var stopName = prompt("Nombre de la parada:");
-            var stopTime = prompt("Hora programada (HH:MM):");
-            if (stopName && stopTime) {
-                var stop = {
+            if (stopName && stopTime && map.getCenter()) { // Basic validation and use map center as default if no click yet
+                addStopToList({
                     name: stopName,
-                    time: stopTime,
-                    latlng: e.latlng
-                };
-                stops.push(stop);
-                L.marker(e.latlng).addTo(map).bindPopup(`Parada: ${stopName}, Hora: ${stopTime}`).openPopup();
-                updateStopList();
+                    latlng: map.getCenter(), // Default to map center if no click
+                    time: stopTime
+                });
+                stopNameInput.value = '';
+                stopTimeInput.value = '';
+            } else {
+                alert("Por favor, ingrese nombre y horario de parada, y haga click en el mapa para la ubicación.");
             }
-        });
+        }
 
-        function updateStopList() {
-            var stopList = document.getElementById('stops');
-            stopList.innerHTML = '';
-            stops.forEach(function(stop, index) {
-                var li = document.createElement('li');
-                li.className = 'stop-item';
-                li.textContent = `${index + 1}. ${stop.name} - ${stop.time}`;
-                stopList.appendChild(li);
+
+        function addStopToList(stopData) {
+            stops.push(stopData);
+            updateStopListDisplay();
+
+            L.marker(stopData.latlng).addTo(map)
+                .bindPopup(`<b>${stopData.name}</b><br>Horario: ${stopData.time}`);
+        }
+
+        function updateStopListDisplay() {
+            const stopsUl = document.getElementById('stops-ul');
+            stopsUl.innerHTML = '';
+            stops.forEach((stop, index) => {
+                const li = document.createElement('li');
+                li.classList.add('stop-item');
+                li.textContent = `${stop.name} - Horario: ${stop.time} (Lat: ${stop.latlng.lat.toFixed(4)}, Lng: ${stop.latlng.lng.toFixed(4)}) `;
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'Eliminar';
+                removeButton.onclick = () => removeStop(index);
+                li.appendChild(removeButton);
+                stopsUl.appendChild(li);
             });
         }
 
-        document.getElementById('save-route-btn').addEventListener('click', saveRoute);
+        function removeStop(index) {
+            stops.splice(index, 1);
+            updateStopListDisplay();
+            // Ideally, remove marker from map too, but for simplicity skipping for now.
+            // You would need to store the marker with the stop data to remove it easily.
+        }
 
-        document.getElementById('delete-route-btn').addEventListener('click', deleteSelectedRoute);
-
-        document.getElementById('route-selector').addEventListener('change', loadSelectedRoute);
-
-        document.getElementById('start-navigation-btn').addEventListener('click', function() {
-            if (!navigationActive) {
-                navigationActive = true;
-                navigationInterval = setInterval(updateNavigation, 5000); // Actualizar cada 5 segundos
-                alert('Navegación iniciada');
-                updateNavigation(); // Actualizar inmediatamente al iniciar
+        function saveRoute() {
+            const routeName = document.getElementById('route-name').value.trim();
+            if (routeName && stops.length > 0) {
+                routes[routeName] = {
+                    stops: stops,
+                    createdAt: new Date()
+                };
+                localStorage.setItem('smartMoveRoutes', JSON.stringify(routes));
+                loadRouteList(); // Update the dropdown
+                alert(`Ruta "${routeName}" guardada!`);
+            } else {
+                alert("Por favor, ingrese un nombre para la ruta y agregue paradas.");
             }
-        });
+        }
 
-        document.getElementById('stop-navigation-btn').addEventListener('click', function() {
-            if (navigationActive) {
-                navigationActive = false;
-                clearInterval(navigationInterval);
-                alert('Navegación detenida');
+        function loadRouteList() {
+            const routeListSelect = document.getElementById('route-list');
+            routeListSelect.innerHTML = ''; // Clear existing options
+            routes = JSON.parse(localStorage.getItem('smartMoveRoutes')) || {};
+
+            for (const routeName in routes) {
+                const option = document.createElement('option');
+                option.value = routeName;
+                option.textContent = routeName;
+                routeListSelect.appendChild(option);
             }
-        });
+        }
 
-        document.getElementById('skip-stop-btn').addEventListener('click', function() {
+        function loadRoute() {
+            const routeName = document.getElementById('route-list').value;
+            if (routeName && routes[routeName]) {
+                currentRoute = routes[routeName];
+                stops = currentRoute.stops;
+                updateStopListDisplay();
+                map.eachLayer(layer => { // Clear existing markers except tile layer
+                    if (layer instanceof L.Marker) {
+                        map.removeLayer(layer);
+                    }
+                });
+                stops.forEach(stop => { // Re-add markers for loaded route
+                    L.marker(stop.latlng).addTo(map)
+                        .bindPopup(`<b>${stop.name}</b><br>Horario: ${stop.time}`);
+                });
+
+                document.getElementById('route-creation-panel').classList.add('hidden');
+                document.getElementById('navigation-panel').classList.remove('hidden');
+                startNavigation();
+            } else {
+                alert("Seleccione una ruta válida para cargar.");
+            }
+        }
+
+        function deleteRoute() {
+            const routeName = document.getElementById('route-list').value;
+            if (routeName && routes[routeName]) {
+                if (confirm(`¿Seguro que desea eliminar la ruta "${routeName}"?`)) {
+                    delete routes[routeName];
+                    localStorage.setItem('smartMoveRoutes', JSON.stringify(routes));
+                    loadRouteList(); // Refresh the list
+                    alert(`Ruta "${routeName}" eliminada.`);
+                }
+            } else {
+                alert("Seleccione una ruta para eliminar.");
+            }
+        }
+
+
+        function startNavigation() {
+            currentStopIndex = 0;
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(updatePosition, handleLocationError, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
+            } else {
+                alert("Geolocalización no soportada por este navegador.");
+            }
+        }
+
+        function updatePosition(position) {
+            const userLatLng = L.latLng(position.coords.latitude, position.coords.longitude);
+
+            if (!userLocationMarker) {
+                userLocationMarker = L.marker(userLatLng).addTo(map)
+                    .bindPopup("Tu ubicación");
+            } else {
+                userLocationMarker.setLatLng(userLatLng);
+            }
+
+            if (currentRoute && stops.length > 0) {
+                calculateTimeDifference(userLatLng);
+                checkStopProximity(userLatLng);
+            }
+        }
+
+        function handleLocationError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Permiso de geolocalización denegado.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Información de ubicación no disponible.");
+                    break;
+                case error.TIMEOUT:
+                    alert("Tiempo de espera para obtener la ubicación agotado.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Error desconocido de geolocalización.");
+                    break;
+            }
+        }
+
+        function calculateTimeDifference(userLatLng) {
+            const currentStop = stops[currentStopIndex];
+            if (!currentStop) return;
+
+            const stopLatLng = currentStop.latlng;
+            const distance = userLatLng.distanceTo(stopLatLng); // Distance in meters
+
+            const now = new Date();
+            const scheduledTimeParts = currentStop.time.split(':');
+            const scheduledTime = new Date(now);
+            scheduledTime.setHours(parseInt(scheduledTimeParts[0]), parseInt(scheduledTimeParts[1]), 0, 0);
+
+            const timeDiffMs = scheduledTime - now;
+            const timeDiffSeconds = Math.round(timeDiffMs / 1000);
+            const minutes = Math.floor(Math.abs(timeDiffSeconds) / 60);
+            const seconds = Math.abs(timeDiffSeconds) % 60;
+
+            const sign = timeDiffSeconds > 0 ? '+' : (timeDiffSeconds < 0 ? '-' : '+');
+            const formattedTimeDiff = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            document.getElementById('time-diff-display').textContent = formattedTimeDiff;
+            document.getElementById('next-stop-name').textContent = currentStop.name;
+            document.getElementById('next-stop-time').textContent = currentStop.time;
+        }
+
+        function checkStopProximity(userLatLng) {
+            const currentStop = stops[currentStopIndex];
+            if (!currentStop) return;
+
+            const stopLatLng = currentStop.latlng;
+            const distance = userLatLng.distanceTo(stopLatLng); // Distance in meters
+
+            if (distance <= 20) {
+                goToNextStop();
+            }
+        }
+
+        function goToNextStop() {
             if (currentStopIndex < stops.length - 1) {
                 currentStopIndex++;
-                updateNavigationImmediately();
+            } else {
+                alert("Has llegado al final de la ruta!");
+                stopNavigation();
             }
-        });
+        }
 
-        document.getElementById('previous-stop-btn').addEventListener('click', function() {
+        function skipStop() {
+            if (currentStopIndex < stops.length - 1) {
+                currentStopIndex++;
+            } else {
+                alert("Ya estás en la última parada.");
+            }
+        }
+
+        function previousStop() {
             if (currentStopIndex > 0) {
                 currentStopIndex--;
-                updateNavigationImmediately();
+            } else {
+                alert("Ya estás en la primera parada.");
             }
+        }
+
+        function stopNavigation() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            alert("Navegación detenida.");
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            loadRouteList(); // Load routes on page load
         });
-
-        function updateNavigation() {
-            if (stops.length === 0) return;
-
-            var nextStop = stops[currentStopIndex];
-            document.getElementById('next-stop').textContent = `Próxima Parada: ${nextStop.name} - ${nextStop.time}`;
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    userPosition = L.latLng(position.coords.latitude, position.coords.longitude);
-                    var distance = userPosition.distanceTo(nextStop.latlng);
-
-                    if (distance > 20) {
-                        currentStopIndex++;
-                        if (currentStopIndex < stops.length) {
-                            nextStop = stops[currentStopIndex];
-                            document.getElementById('next-stop').textContent = `Próxima Parada: ${nextStop.name} - ${nextStop.time}`;
-                        }
-                    }
-
-                    calculateTimeDifference(nextStop);
-                    updateCoordinates(userPosition);
-                }, function(error) {
-                    alert('Error al obtener la ubicación: ' + error.message);
-                });
-            } else {
-                alert('Geolocalización no soportada por este navegador.');
-            }
-        }
-
-        function updateNavigationImmediately() {
-            if (stops.length === 0) return;
-
-            var nextStop = stops[currentStopIndex];
-            document.getElementById('next-stop').textContent = `Próxima Parada: ${nextStop.name} - ${nextStop.time}`;
-
-            if (userPosition) {
-                var distance = userPosition.distanceTo(nextStop.latlng);
-
-                if (distance > 20) {
-                    currentStopIndex++;
-                    if (currentStopIndex < stops.length) {
-                        nextStop = stops[currentStopIndex];
-                        document.getElementById('next-stop').textContent = `Próxima Parada: ${nextStop.name} - ${nextStop.time}`;
-                    }
-                }
-
-                calculateTimeDifference(nextStop);
-            }
-        }
-
-        function calculateTimeDifference(nextStop) {
-            var nextStopTimeParts = nextStop.time.split(':');
-            var nextStopHours = parseInt(nextStopTimeParts[0], 10);
-            var nextStopMinutes = parseInt(nextStopTimeParts[1], 10);
-            var nextStopTimeInSeconds = nextStopHours * 3600 + nextStopMinutes * 60;
-
-            var currentTime = new Date();
-            var currentHours = currentTime.getHours();
-            var currentMinutes = currentTime.getMinutes();
-            var currentSeconds = currentTime.getSeconds();
-            var currentTimeInSeconds = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
-
-            var timeDiff = nextStopTimeInSeconds - currentTimeInSeconds;
-            var sign = timeDiff >= 0 ? '+' : '-';
-            timeDiff = Math.abs(timeDiff);
-
-            var minutes = Math.floor(timeDiff / 60);
-            var seconds = timeDiff % 60;
-
-            var timeDiffStr = sign + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-            document.getElementById('time-difference').textContent = `Diferencia de Tiempo: ${timeDiffStr}`;
-        }
-
-        function updateCoordinates(position) {
-            document.getElementById('current-coordinates').textContent = `Latitud: ${position.lat.toFixed(6)}, Longitud: ${position.lng.toFixed(6)}`;
-        }
-
-        // Solicitar permiso de ubicación y actualizar coordenadas en tiempo real
-        function requestLocationPermission() {
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(function(position) {
-                    userPosition = L.latLng(position.coords.latitude, position.coords.longitude);
-                    updateCoordinates(userPosition);
-                }, function(error) {
-                    alert('Error al obtener la ubicación: ' + error.message);
-                });
-            } else {
-                alert('Geolocalización no soportada por este navegador.');
-            }
-        }
-
-        // Cargar rutas al iniciar
-        loadRoutes();
-
-        // Solicitar permiso de ubicación al cargar la página
-        requestLocationPermission();
     </script>
+
 </body>
 </html>
