@@ -153,20 +153,33 @@
                         }
                     }
 
-                    calculateTimeDifference(nextStop, userPosition);
+                    calculateTimeDifference(nextStop);
                 });
             } else {
                 alert('Geolocalización no soportada por este navegador.');
             }
         }
 
-        function calculateTimeDifference(nextStop, userPosition) {
-            var nextStopTime = new Date(`1970-01-01T${nextStop.time}:00`);
+        function calculateTimeDifference(nextStop) {
+            var nextStopTimeParts = nextStop.time.split(':');
+            var nextStopHours = parseInt(nextStopTimeParts[0], 10);
+            var nextStopMinutes = parseInt(nextStopTimeParts[1], 10);
+            var nextStopTimeInSeconds = nextStopHours * 3600 + nextStopMinutes * 60;
+
             var currentTime = new Date();
-            var timeDiff = (nextStopTime - currentTime) / 1000;
+            var currentHours = currentTime.getHours();
+            var currentMinutes = currentTime.getMinutes();
+            var currentSeconds = currentTime.getSeconds();
+            var currentTimeInSeconds = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
+
+            var timeDiff = nextStopTimeInSeconds - currentTimeInSeconds;
+            var sign = timeDiff >= 0 ? '+' : '-';
+            timeDiff = Math.abs(timeDiff);
+
             var minutes = Math.floor(timeDiff / 60);
-            var seconds = Math.floor(timeDiff % 60);
-            var timeDiffStr = (timeDiff >= 0 ? '+' : '-') + String(Math.abs(minutes)).padStart(2, '0') + ':' + String(Math.abs(seconds)).padStart(2, '0');
+            var seconds = timeDiff % 60;
+
+            var timeDiffStr = sign + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
             document.getElementById('time-difference').textContent = `Diferencia de Tiempo: ${timeDiffStr}`;
         }
     </script>
