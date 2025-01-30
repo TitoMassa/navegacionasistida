@@ -43,12 +43,21 @@
             font-size: 18px;
             margin-bottom: 10px;
         }
+        #route-selector {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
     <h1>Smart Move</h1>
     <div id="map"></div>
     <div id="controls">
+        <select id="route-selector">
+            <option value="">Seleccionar Ruta</option>
+        </select>
         <button id="add-stop-btn">Agregar Parada</button>
         <button id="save-route-btn">Guardar Ruta</button>
         <button id="delete-route-btn">Eliminar Ruta</button>
@@ -80,6 +89,68 @@
         var currentStopIndex = 0;
         var navigationActive = false;
         var navigationInterval;
+        var selectedRoute = null;
+
+        // Cargar rutas guardadas
+        function loadRoutes() {
+            var routeSelector = document.getElementById('route-selector');
+            routeSelector.innerHTML = '<option value="">Seleccionar Ruta</option>';
+            var routes = JSON.parse(localStorage.getItem('routes')) || [];
+            routes.forEach(function(route, index) {
+                var option = document.createElement('option');
+                option.value = index;
+                option.textContent = `Ruta ${index + 1}`;
+                routeSelector.appendChild(option);
+            });
+        }
+
+        // Guardar ruta
+        function saveRoute() {
+            var routes = JSON.parse(localStorage.getItem('routes')) || [];
+            routes.push(stops);
+            localStorage.setItem('routes', JSON.stringify(routes));
+            loadRoutes();
+            alert('Ruta guardada');
+        }
+
+        // Cargar ruta seleccionada
+        function loadSelectedRoute() {
+            var routeSelector = document.getElementById('route-selector');
+            var index = routeSelector.value;
+            if (index !== '') {
+                var routes = JSON.parse(localStorage.getItem('routes')) || [];
+                stops = routes[index];
+                selectedRoute = index;
+                updateStopList();
+                map.eachLayer(function(layer) {
+                    if (layer instanceof L.Marker) {
+                        map.removeLayer(layer);
+                    }
+                });
+                stops.forEach(function(stop) {
+                    L.marker(stop.latlng).addTo(map).bindPopup(`Parada: ${stop.name}, Hora: ${stop.time}`).openPopup();
+                });
+            }
+        }
+
+        // Eliminar ruta seleccionada
+        function deleteSelectedRoute() {
+            if (selectedRoute !== null) {
+                var routes = JSON.parse(localStorage.getItem('routes')) || [];
+                routes.splice(selectedRoute, 1);
+                localStorage.setItem('routes', JSON.stringify(routes));
+                loadRoutes();
+                stops = [];
+                selectedRoute = null;
+                updateStopList();
+                map.eachLayer(function(layer) {
+                    if (layer instanceof L.Marker) {
+                        map.removeLayer(layer);
+                    }
+                });
+                alert('Ruta eliminada');
+            }
+        }
 
         map.on('click', function(e) {
             var stopName = prompt("Nombre de la parada:");
@@ -107,21 +178,11 @@
             });
         }
 
-        document.getElementById('save-route-btn').addEventListener('click', function() {
-            alert('Ruta guardada');
-        });
+        document.getElementById('save-route-btn').addEventListener('click', saveRoute);
 
-        document.getElementById('delete-route-btn').addEventListener('click', function() {
-            stops = [];
-            currentStopIndex = 0;
-            updateStopList();
-            map.eachLayer(function(layer) {
-                if (layer instanceof L.Marker) {
-                    map.removeLayer(layer);
-                }
-            });
-            alert('Ruta eliminada');
-        });
+        document.getElementById('delete-route-btn').addEventListener('click', deleteSelectedRoute);
+
+        document.getElementById('route-selector').addEventListener('change', loadSelectedRoute);
 
         document.getElementById('start-navigation-btn').addEventListener('click', function() {
             if (!navigationActive) {
@@ -173,6 +234,8 @@
                     }
 
                     calculateTimeDifference(nextStop);
+                }, function(error) {
+                    alert('Error al obtener la ubicación: ' + error.message);
                 });
             } else {
                 alert('Geolocalización no soportada por este navegador.');
@@ -201,6 +264,9 @@
             var timeDiffStr = sign + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
             document.getElementById('time-difference').textContent = `Diferencia de Tiempo: ${timeDiffStr}`;
         }
+
+        // Cargar rutas al iniciar
+        loadRoutes();
     </script>
 </body>
 </html>
