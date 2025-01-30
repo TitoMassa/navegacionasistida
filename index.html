@@ -5,11 +5,79 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { margin: 0; padding: 0; }
-        #map { width: 100%; height: 400px; }
-        #controls { padding: 10px; display: flex; flex-direction: column; }
-        #controls label, #controls input, #controls button, #timeDifference { margin-bottom: 10px; }
-        #timeDifference { font-size: 1.2em; font-weight: bold; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black; /* Fondo negro */
+            color: white; /* Texto blanco */
+            font-family: 'Arial', sans-serif; /* Fuente más estética (puedes cambiarla) */
+            display: flex; /* Para centrar verticalmente el contenido principal */
+            flex-direction: column;
+            align-items: center; /* Centrar horizontalmente */
+            min-height: 100vh; /* Asegurar que el body ocupe toda la altura de la ventana */
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        #map {
+            width: 90%; /* Mapa más estrecho para dejar espacio a los lados en pantallas grandes */
+            max-width: 800px; /* Ancho máximo del mapa */
+            height: 400px;
+            margin-bottom: 20px;
+            border-radius: 8px; /* Bordes redondeados para el mapa */
+            overflow: hidden; /* Asegurar que los bordes redondeados se apliquen correctamente */
+        }
+        #controls {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            width: 90%;
+            max-width: 800px;
+            background-color: #222; /* Fondo oscuro para los controles */
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-sizing: border-box; /* Para que el padding no aumente el ancho total */
+        }
+        #controls label, #controls input, #controls button {
+            margin-bottom: 15px;
+            color: white; /* Texto blanco para los labels y inputs */
+        }
+        #controls input[type="time"] {
+            background-color: #333; /* Fondo oscuro para los inputs */
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        #controls button {
+            background-color: #007bff; /* Botón azul */
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #timeDifference {
+            font-size: 3em; /* Tamaño de fuente más grande */
+            font-weight: bold;
+            text-align: center; /* Centrar el texto */
+            margin-top: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* Clases de color para la diferencia de tiempo */
+        .time-delayed {
+            color: red;
+        }
+        .time-ontime {
+            color: green;
+        }
+        .time-advanced {
+            color: blue;
+        }
+
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -49,8 +117,8 @@
         var plannedArrivalTime = null;
         var navigationActive = false;
         var watchId = null;
-        var totalPlannedDistance = 0; // Distancia total planificada
-        var userLocation = null; // Ubicación actual del usuario (LatLng)
+        var totalPlannedDistance = 0;
+        var userLocation = null;
 
 
         function updateTimeDifference() {
@@ -61,36 +129,64 @@
             var departureTime = plannedDepartureTime.getTime();
             var arrivalTime = plannedArrivalTime.getTime();
 
-            var plannedDuration = arrivalTime - departureTime; // Duración planificada en milisegundos
+            var plannedDuration = arrivalTime - departureTime;
 
-            var distanceToDestination = userLocation.distanceTo(destinationMarker.getLatLng()); // Distancia actual al destino en metros
+            var distanceToDestination = userLocation.distanceTo(destinationMarker.getLatLng());
 
             if (totalPlannedDistance <= 0) {
-                timeDifferenceDisplay.textContent = "Distancia no calculada."; // Avoid division by zero if distance is not available
+                timeDifferenceDisplay.textContent = "Distancia no calculada.";
                 return;
             }
 
             var spatialProgress = (totalPlannedDistance - distanceToDestination) / totalPlannedDistance;
 
-            if (spatialProgress < 0) spatialProgress = 0; // Ensure progress is not negative if user goes beyond destination
-            if (spatialProgress > 1) spatialProgress = 1; // Ensure progress does not exceed 1 if user goes beyond destination
+            if (spatialProgress < 0) spatialProgress = 0;
+            if (spatialProgress > 1) spatialProgress = 1;
 
             var expectedElapsedTime = spatialProgress * plannedDuration;
             var expectedTime = departureTime + expectedElapsedTime;
 
-            var timeDifferenceMs = expectedTime - currentTime; // Diferencia: Positivo -> Adelantado, Negativo -> Atrasado
+            var timeDifferenceMs = expectedTime - currentTime;
 
             var differenceSign = timeDifferenceMs >= 0 ? '+' : '-';
             timeDifferenceMs = Math.abs(timeDifferenceMs);
 
             var minutes = Math.floor((timeDifferenceMs / (1000 * 60)) % 60);
-            var totalMinutes = Math.floor(timeDifferenceMs / (1000 * 60)); // Total minutes for format -MM:SS correctly
+            var totalMinutes = Math.floor(timeDifferenceMs / (1000 * 60));
             var seconds = Math.floor((timeDifferenceMs / 1000) % 60);
 
-            var formattedMinutes = String(totalMinutes).padStart(2, '0'); // Use total minutes here
+            var formattedMinutes = String(totalMinutes).padStart(2, '0');
             var formattedSeconds = String(seconds).padStart(2, '0');
 
-            timeDifferenceDisplay.textContent = differenceSign + formattedMinutes + ':' + formattedSeconds;
+            var timeString = differenceSign + formattedMinutes + ':' + formattedSeconds;
+            timeDifferenceDisplay.textContent = timeString;
+
+            // Lógica de color basada en la diferencia de tiempo
+            if (timeDifferenceMs > 2 * 60 * 1000 && differenceSign === '-') { // Atrasado más de 2 minutos
+                timeDifferenceDisplay.className = 'time-delayed';
+            } else if (timeDifferenceMs <= 2 * 60 * 1000 && timeDifferenceMs >= 0 && differenceSign === '+') { // Adelantado menos o igual a 2 minutos (incluyendo 0 y positivo)
+                timeDifferenceDisplay.className = 'time-advanced';
+            } else if (timeDifferenceMs <= 2 * 60 * 1000 && timeDifferenceMs >= 0 && differenceSign === '-') { // Atrasado menos o igual a 2 minutos (incluyendo 0 y negativo)
+                timeDifferenceDisplay.className = 'time-ontime'; // Considerado "a tiempo"
+            } else if (timeDifferenceMs <= 2 * 60 * 1000 && timeDifferenceMs >= 0 && differenceSign === '+') { // Adelantado menos o igual a 2 minutos (incluyendo 0 y positivo)
+                timeDifferenceDisplay.className = 'time-ontime'; // Considerado "a tiempo"
+            } else if (timeDifferenceMs <= 120000 && timeDifferenceMs >= 0) { // Entre -2 y +2 minutos (en milisegundos)
+                timeDifferenceDisplay.className = 'time-ontime';
+            }
+             else if (timeDifferenceMs > 120000 && differenceSign === '+') { // Adelantado más de 2 minutos
+                timeDifferenceDisplay.className = 'time-advanced';
+            } else {
+                timeDifferenceDisplay.className = ''; // Sin clase por defecto (o podrías tener una clase por defecto "time-ontime" si prefieres)
+            }
+             if (timeDifferenceMs > 120000 && differenceSign === '-') { // Atrasado más de 2 minutos
+                timeDifferenceDisplay.className = 'time-delayed';
+            } else if (timeDifferenceMs <= 120000 && timeDifferenceMs >= -120000) { // Entre -2 y +2 minutos (en milisegundos)
+                timeDifferenceDisplay.className = 'time-ontime';
+            } else if (timeDifferenceMs < -120000) { // Adelantado más de 2 minutos
+                timeDifferenceDisplay.className = 'time-advanced';
+            }
+
+
         }
 
 
@@ -113,20 +209,20 @@
                 return;
             }
 
-            totalPlannedDistance = startMarker.getLatLng().distanceTo(destinationMarker.getLatLng()); // Calculate total distance
+            totalPlannedDistance = startMarker.getLatLng().distanceTo(destinationMarker.getLatLng());
 
             navigationActive = true;
             startNavigationButton.disabled = true;
             timeDifferenceDisplay.textContent = "Calculando diferencia de tiempo...";
+            timeDifferenceDisplay.className = ''; // Limpiar clases de color al iniciar navegación
 
             setInterval(updateTimeDifference, 1000);
 
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(
                     function(position) {
-                        userLocation = L.latLng(position.coords.latitude, position.coords.longitude); // Update user location
+                        userLocation = L.latLng(position.coords.latitude, position.coords.longitude);
                         console.log("Posición GPS actualizada:", position.coords.latitude, position.coords.longitude);
-                        // You could add a marker for the user's current location if needed.
                     },
                     function(error) {
                         console.error("Error al obtener la ubicación GPS:", error.message);
@@ -165,14 +261,14 @@
                 }
                 startMarker = L.marker(e.latlng).addTo(map).bindPopup("Punto de Inicio").openPopup();
                 if (destinationMarker) {
-                    totalPlannedDistance = startMarker.getLatLng().distanceTo(destinationMarker.getLatLng()); // Recalculate distance if start marker changes and destination exists
+                    totalPlannedDistance = startMarker.getLatLng().distanceTo(destinationMarker.getLatLng());
                 }
             } else if (!destinationMarker) {
                 if (destinationMarker) {
                     map.removeLayer(destinationMarker);
                 }
                 destinationMarker = L.marker(e.latlng).addTo(map).bindPopup("Punto de Destino").openPopup();
-                totalPlannedDistance = startMarker.getLatLng().distanceTo(destinationMarker.getLatLng()); // Calculate distance when destination is set
+                totalPlannedDistance = startMarker.getLatLng().distanceTo(destinationMarker.getLatLng());
             } else {
                 alert("Ya has seleccionado punto de inicio y destino. Para volver a empezar, recarga la página.");
             }
