@@ -235,7 +235,7 @@
             }
 
             if (currentRoute && stops.length > 0) {
-                calculateTimeDifference(); // No need to pass userLatLng anymore for time diff calculation
+                calculateTimeDifference(userLatLng); // Pasamos userLatLng de nuevo
                 checkStopProximity(userLatLng);
             }
         }
@@ -257,9 +257,12 @@
             }
         }
 
-        function calculateTimeDifference() { // userLatLng removed as parameter
+        function calculateTimeDifference(userLatLng) { // Reintroducimos userLatLng
             const currentStop = stops[currentStopIndex];
             if (!currentStop) return;
+
+            const stopLatLng = currentStop.latlng;
+            const distance = userLatLng.distanceTo(stopLatLng);
 
             const now = new Date();
             const scheduledTimeParts = currentStop.time.split(':');
@@ -272,9 +275,14 @@
             const seconds = Math.abs(timeDiffSeconds) % 60;
 
             const sign = timeDiffSeconds > 0 ? '+' : (timeDiffSeconds < 0 ? '-' : '+');
-            const formattedTimeDiff = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            let formattedTimeDiff = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            let delayContext = "";
 
-            document.getElementById('time-diff-display').textContent = formattedTimeDiff;
+            if (distance > 20 && timeDiffSeconds < 0) {
+                delayContext = " (En ruta, atraso puede ser mayor)";
+            }
+
+            document.getElementById('time-diff-display').textContent = formattedTimeDiff + delayContext;
             document.getElementById('next-stop-name').textContent = currentStop.name;
             document.getElementById('next-stop-time').textContent = currentStop.time;
         }
@@ -294,7 +302,7 @@
         function goToNextStop() {
             if (currentStopIndex < stops.length - 1) {
                 currentStopIndex++;
-                calculateTimeDifference(); // Recalculate time difference for the new stop immediately
+                calculateTimeDifference(userLocationMarker.getLatLng()); // Pasamos userLatLng aquí
             } else {
                 alert("Has llegado al final de la ruta!");
                 stopNavigation();
@@ -304,7 +312,7 @@
         function skipStop() {
             if (currentStopIndex < stops.length - 1) {
                 currentStopIndex++;
-                calculateTimeDifference(); // Recalculate time difference for the new stop immediately
+                calculateTimeDifference(userLocationMarker.getLatLng()); // Pasamos userLatLng aquí
             } else {
                 alert("Ya estás en la última parada.");
             }
@@ -313,7 +321,7 @@
         function previousStop() {
             if (currentStopIndex > 0) {
                 currentStopIndex--;
-                calculateTimeDifference(); // Recalculate time difference for the new stop immediately
+                calculateTimeDifference(userLocationMarker.getLatLng()); // Pasamos userLatLng aquí
             } else {
                 alert("Ya estás en la primera parada.");
             }
