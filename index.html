@@ -49,6 +49,10 @@
             margin-bottom: 10px;
             font-size: 16px;
         }
+        #coordinates {
+            font-size: 16px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -74,6 +78,10 @@
         <p id="next-stop">Próxima Parada: </p>
         <button id="skip-stop-btn">Saltar Parada</button>
         <button id="previous-stop-btn">Volver a Parada Anterior</button>
+    </div>
+    <div id="coordinates">
+        <h2>Coordenadas Actuales:</h2>
+        <p id="current-coordinates">Obteniendo ubicación...</p>
     </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -234,6 +242,7 @@
                     }
 
                     calculateTimeDifference(nextStop);
+                    updateCoordinates(userPosition);
                 }, function(error) {
                     alert('Error al obtener la ubicación: ' + error.message);
                 });
@@ -265,8 +274,29 @@
             document.getElementById('time-difference').textContent = `Diferencia de Tiempo: ${timeDiffStr}`;
         }
 
+        function updateCoordinates(position) {
+            document.getElementById('current-coordinates').textContent = `Latitud: ${position.lat.toFixed(6)}, Longitud: ${position.lng.toFixed(6)}`;
+        }
+
+        // Solicitar permiso de ubicación y actualizar coordenadas en tiempo real
+        function requestLocationPermission() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(function(position) {
+                    var userPosition = L.latLng(position.coords.latitude, position.coords.longitude);
+                    updateCoordinates(userPosition);
+                }, function(error) {
+                    alert('Error al obtener la ubicación: ' + error.message);
+                });
+            } else {
+                alert('Geolocalización no soportada por este navegador.');
+            }
+        }
+
         // Cargar rutas al iniciar
         loadRoutes();
+
+        // Solicitar permiso de ubicación al cargar la página
+        requestLocationPermission();
     </script>
 </body>
 </html>
