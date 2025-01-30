@@ -71,10 +71,10 @@
         let currentStopIndex = 0;
         let userLocationMarker = null;
         let watchId = null;
-        let routes = {}; // Object to store routes, routeName: { stops: [], ... }
+        let routes = {};
 
         function initMap() {
-            map = L.map('map-container').setView([-27.4606, -58.9843], 13); // Corrientes, Argentina
+            map = L.map('map-container').setView([-27.4606, -58.9843], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
@@ -102,10 +102,10 @@
             const stopName = stopNameInput.value.trim();
             const stopTime = stopTimeInput.value;
 
-            if (stopName && stopTime && map.getCenter()) { // Basic validation and use map center as default if no click yet
+            if (stopName && stopTime && map.getCenter()) {
                 addStopToList({
                     name: stopName,
-                    latlng: map.getCenter(), // Default to map center if no click
+                    latlng: map.getCenter(),
                     time: stopTime
                 });
                 stopNameInput.value = '';
@@ -142,8 +142,6 @@
         function removeStop(index) {
             stops.splice(index, 1);
             updateStopListDisplay();
-            // Ideally, remove marker from map too, but for simplicity skipping for now.
-            // You would need to store the marker with the stop data to remove it easily.
         }
 
         function saveRoute() {
@@ -154,7 +152,7 @@
                     createdAt: new Date()
                 };
                 localStorage.setItem('smartMoveRoutes', JSON.stringify(routes));
-                loadRouteList(); // Update the dropdown
+                loadRouteList();
                 alert(`Ruta "${routeName}" guardada!`);
             } else {
                 alert("Por favor, ingrese un nombre para la ruta y agregue paradas.");
@@ -163,7 +161,7 @@
 
         function loadRouteList() {
             const routeListSelect = document.getElementById('route-list');
-            routeListSelect.innerHTML = ''; // Clear existing options
+            routeListSelect.innerHTML = '';
             routes = JSON.parse(localStorage.getItem('smartMoveRoutes')) || {};
 
             for (const routeName in routes) {
@@ -180,12 +178,12 @@
                 currentRoute = routes[routeName];
                 stops = currentRoute.stops;
                 updateStopListDisplay();
-                map.eachLayer(layer => { // Clear existing markers except tile layer
+                map.eachLayer(layer => {
                     if (layer instanceof L.Marker) {
                         map.removeLayer(layer);
                     }
                 });
-                stops.forEach(stop => { // Re-add markers for loaded route
+                stops.forEach(stop => {
                     L.marker(stop.latlng).addTo(map)
                         .bindPopup(`<b>${stop.name}</b><br>Horario: ${stop.time}`);
                 });
@@ -204,7 +202,7 @@
                 if (confirm(`¿Seguro que desea eliminar la ruta "${routeName}"?`)) {
                     delete routes[routeName];
                     localStorage.setItem('smartMoveRoutes', JSON.stringify(routes));
-                    loadRouteList(); // Refresh the list
+                    loadRouteList();
                     alert(`Ruta "${routeName}" eliminada.`);
                 }
             } else {
@@ -237,7 +235,7 @@
             }
 
             if (currentRoute && stops.length > 0) {
-                calculateTimeDifference(userLatLng);
+                calculateTimeDifference(); // No need to pass userLatLng anymore for time diff calculation
                 checkStopProximity(userLatLng);
             }
         }
@@ -259,12 +257,9 @@
             }
         }
 
-        function calculateTimeDifference(userLatLng) {
+        function calculateTimeDifference() { // userLatLng removed as parameter
             const currentStop = stops[currentStopIndex];
             if (!currentStop) return;
-
-            const stopLatLng = currentStop.latlng;
-            const distance = userLatLng.distanceTo(stopLatLng); // Distance in meters
 
             const now = new Date();
             const scheduledTimeParts = currentStop.time.split(':');
@@ -289,7 +284,7 @@
             if (!currentStop) return;
 
             const stopLatLng = currentStop.latlng;
-            const distance = userLatLng.distanceTo(stopLatLng); // Distance in meters
+            const distance = userLatLng.distanceTo(stopLatLng);
 
             if (distance <= 20) {
                 goToNextStop();
@@ -299,6 +294,7 @@
         function goToNextStop() {
             if (currentStopIndex < stops.length - 1) {
                 currentStopIndex++;
+                calculateTimeDifference(); // Recalculate time difference for the new stop immediately
             } else {
                 alert("Has llegado al final de la ruta!");
                 stopNavigation();
@@ -308,6 +304,7 @@
         function skipStop() {
             if (currentStopIndex < stops.length - 1) {
                 currentStopIndex++;
+                calculateTimeDifference(); // Recalculate time difference for the new stop immediately
             } else {
                 alert("Ya estás en la última parada.");
             }
@@ -316,6 +313,7 @@
         function previousStop() {
             if (currentStopIndex > 0) {
                 currentStopIndex--;
+                calculateTimeDifference(); // Recalculate time difference for the new stop immediately
             } else {
                 alert("Ya estás en la primera parada.");
             }
@@ -332,7 +330,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             initMap();
-            loadRouteList(); // Load routes on page load
+            loadRouteList();
         });
     </script>
 
