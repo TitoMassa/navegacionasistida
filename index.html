@@ -1,87 +1,210 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Smart Move</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <title>Smart Move</title>
     <style>
-        /* Estilos mejorados */
-        #nextStopInfo {
-            margin: 15px 0;
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #route-list {
+            margin-top: 20px;
+        }
+        .time-diff {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .next-stop {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        button {
+            margin: 5px;
             padding: 10px;
-            background: #e9ecef;
-            border-radius: 5px;
-        }
-        .progress-line {
-            height: 4px;
-            background: #dee2e6;
-            margin: 10px 0;
-            position: relative;
-        }
-        .progress-indicator {
-            height: 100%;
-            background: #28a745;
-            width: 0;
-            transition: width 0.3s ease;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
-    <!-- Añadido progreso y info de parada -->
-    <div class="progress-line">
-        <div class="progress-indicator" id="routeProgress"></div>
-    </div>
-    <div id="nextStopInfo">
-        Próxima parada: <strong id="nextStopName">-</strong><br>
-        Hora programada: <span id="nextStopTime">-</span>
+    <h1>Smart Move</h1>
+    <div id="map"></div>
+    <div id="controls">
+        <div class="time-diff" id="time-diff">--:--</div>
+        <div class="next-stop" id="next-stop">Próxima parada: --</div>
+        <button onclick="skipStop()">Saltar Parada</button>
+        <button onclick="previousStop()">Volver a Parada Anterior</button>
+        <div id="route-list"></div>
     </div>
 
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script>
-        // Variables mejoradas
-        let hasEnteredProximity = false;
-        let routePolyline, routeMarkers = [];
+        let map;
+        let markers = [];
+        let currentStopIndex = 0;
+        let routes = [];
+        let currentRoute = null;
 
-        // Nuevo método para análisis de dirección
-        function isMovingTowards(currentPos, nextStop) {
-            if (!window.previousPosition) return true;
-            const prevDist = getDistance(window.previousPosition, nextStop);
-            const currentDist = getDistance(currentPos, nextStop);
-            return currentDist < prevDist;
+        function initMap() {
+            map = L.map('map').setView([-34.6037, -58.3816], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            map.on('click', function(e) {
+                addStop(e.latlng);
+            });
+
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(updatePosition, handleLocationError, { enableHighAccuracy: true });
+            } else {
+                alert("Geolocalización no es soportada por este navegador.");
+            }
         }
 
-        // Actualización de navegación
-        function updateNavigation() {
+        function addStop(latlng) {
+            const name = prompt("Nombre de la parada:");
+            const time = prompt("Hora programada (HH:MM):");
+            if (name && time) {
+                const marker = L.marker(latlng).addTo(map).bindPopup(`Parada: ${name}<br>Hora: ${time}`);
+                markers.push({ marker, name, time, latlng });
+                updateRouteList();
+            }
+        }
+
+        function updateRouteList() {
+            const routeList = document.getElementById('route-list');
+            routeList.innerHTML = '';
+            markers.forEach((stop, index) => {
+                const listItem = document.createElement('div');
+                listItem.innerHTML = `Parada ${index + 1}: ${stop.name} - ${stop.time}`;
+                routeList.appendChild(listItem);
+            });
+        }
+
+        function saveRoute() {
+            const routeName = prompt("Nombre de la ruta:");
+            if (routeName) {
+                routes.push({ name: routeName, stops: markers.slice() });
+                alert("Ruta guardada.");
+            }
+        }
+
+        function loadRoute() {
+            const routeName = prompt("Nombre de la ruta a cargar:");
+            const route = routes.find(r => r.name === routeName);
+            if (route) {
+                currentRoute = route;
+                currentStopIndex = 0;
+                markers = route.stops;
+                updateRouteList();
+                updateNextStop();
+            } else {
+                alert("Ruta no encontrada.");
+            }
+        }
+
+        function deleteRoute() {
+            const routeName = prompt("Nombre de la ruta a eliminar:");
+            routes = routes.filter(r => r.name !== routeName);
+            alert("Ruta eliminada.");
+        }
+
+        function updatePosition(position) {
+            const currentStop = currentRoute.stops[currentStopIndex];
+            if (currentStop) {
+                const distance = calculateDistance(
+                    position.coords.latitude,
+                    position.coords.longitude,
+                    currentStop.latlng.lat,
+                    currentStop.latlng.lng
+                );
+                if (distance > 20) {
+                    currentStopIndex++;
+                    updateNextStop();
+                }
+                updateTimeDifference(position.coords);
+            }
+        }
+
+        function updateNextStop() {
             const nextStop = currentRoute.stops[currentStopIndex];
-            const now = new Date();
-            
-            // Calcular diferencia horaria precisa
-            const scheduledTime = parseTime(nextStop.time);
-            const timeDiff = scheduledTime - now;
-            
-            // Actualizar progreso
-            const totalStops = currentRoute.stops.length;
-            const progress = (currentStopIndex / (totalStops - 1)) * 100;
-            document.getElementById('routeProgress').style.width = `${progress}%`;
+            if (nextStop) {
+                document.getElementById('next-stop').innerText = `Próxima parada: ${nextStop.name} - ${nextStop.time}`;
+            } else {
+                document.getElementById('next-stop').innerText = 'Próxima parada: --';
+            }
         }
 
-        // Mejorado sistema de carga de rutas
-        function loadRoute(index) {
-            // Limpiar elementos anteriores del mapa
-            if (routePolyline) map.removeLayer(routePolyline);
-            routeMarkers.forEach(marker => map.removeLayer(marker));
-            
-            // Cargar nueva ruta
-            currentRoute = routes[index];
-            const latlngs = currentRoute.stops.map(stop => [stop.lat, stop.lng]);
-            
-            // Dibujar nueva ruta
-            routePolyline = L.polyline(latlngs, {color: 'blue'}).addTo(map);
-            routeMarkers = currentRoute.stops.map(stop => 
-                L.marker([stop.lat, stop.lng]).addTo(map)
-            );
-            
-            map.fitBounds(routePolyline.getBounds());
+        function updateTimeDifference(coords) {
+            const nextStop = currentRoute.stops[currentStopIndex];
+            if (nextStop) {
+                const [hours, minutes] = nextStop.time.split(':').map(Number);
+                const scheduledTime = new Date();
+                scheduledTime.setHours(hours, minutes, 0, 0);
+                const currentTime = new Date();
+                const timeDiff = (scheduledTime - currentTime) / 1000;
+                const formattedTimeDiff = formatTimeDifference(timeDiff);
+                document.getElementById('time-diff').innerText = formattedTimeDiff;
+            }
         }
+
+        function formatTimeDifference(seconds) {
+            const sign = seconds >= 0 ? '+' : '-';
+            const absSeconds = Math.abs(seconds);
+            const minutes = Math.floor(absSeconds / 60);
+            const secs = Math.floor(absSeconds % 60);
+            return `${sign}${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function skipStop() {
+            if (currentStopIndex < currentRoute.stops.length - 1) {
+                currentStopIndex++;
+                updateNextStop();
+            }
+        }
+
+        function previousStop() {
+            if (currentStopIndex > 0) {
+                currentStopIndex--;
+                updateNextStop();
+            }
+        }
+
+        function handleLocationError(error) {
+            alert(`Error al obtener la ubicación: ${error.message}`);
+        }
+
+        initMap();
     </script>
 </body>
 </html>
