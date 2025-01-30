@@ -49,6 +49,9 @@
         <div class="next-stop" id="next-stop">Próxima parada: --</div>
         <button onclick="skipStop()">Saltar Parada</button>
         <button onclick="previousStop()">Volver a Parada Anterior</button>
+        <button onclick="saveRoute()">Guardar Ruta</button>
+        <button onclick="loadRoute()">Cargar Ruta</button>
+        <button onclick="deleteRoute()">Eliminar Ruta</button>
         <div id="route-list"></div>
     </div>
 
@@ -60,6 +63,7 @@
         let currentStopIndex = 0;
         let routes = [];
         let currentRoute = null;
+        let userPosition = null;
 
         function initMap() {
             map = L.map('map').setView([-34.6037, -58.3816], 13);
@@ -127,6 +131,7 @@
         }
 
         function updatePosition(position) {
+            userPosition = position;
             const currentStop = currentRoute.stops[currentStopIndex];
             if (currentStop) {
                 const distance = calculateDistance(
