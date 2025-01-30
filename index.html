@@ -98,6 +98,7 @@
         var navigationActive = false;
         var navigationInterval;
         var selectedRoute = null;
+        var userPosition = null;
 
         // Cargar rutas guardadas
         function loadRoutes() {
@@ -197,6 +198,7 @@
                 navigationActive = true;
                 navigationInterval = setInterval(updateNavigation, 5000); // Actualizar cada 5 segundos
                 alert('Navegación iniciada');
+                updateNavigation(); // Actualizar inmediatamente al iniciar
             }
         });
 
@@ -211,14 +213,14 @@
         document.getElementById('skip-stop-btn').addEventListener('click', function() {
             if (currentStopIndex < stops.length - 1) {
                 currentStopIndex++;
-                updateNavigation();
+                updateNavigationImmediately();
             }
         });
 
         document.getElementById('previous-stop-btn').addEventListener('click', function() {
             if (currentStopIndex > 0) {
                 currentStopIndex--;
-                updateNavigation();
+                updateNavigationImmediately();
             }
         });
 
@@ -230,7 +232,7 @@
 
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(function(position) {
-                    var userPosition = L.latLng(position.coords.latitude, position.coords.longitude);
+                    userPosition = L.latLng(position.coords.latitude, position.coords.longitude);
                     var distance = userPosition.distanceTo(nextStop.latlng);
 
                     if (distance > 20) {
@@ -248,6 +250,27 @@
                 });
             } else {
                 alert('Geolocalización no soportada por este navegador.');
+            }
+        }
+
+        function updateNavigationImmediately() {
+            if (stops.length === 0) return;
+
+            var nextStop = stops[currentStopIndex];
+            document.getElementById('next-stop').textContent = `Próxima Parada: ${nextStop.name} - ${nextStop.time}`;
+
+            if (userPosition) {
+                var distance = userPosition.distanceTo(nextStop.latlng);
+
+                if (distance > 20) {
+                    currentStopIndex++;
+                    if (currentStopIndex < stops.length) {
+                        nextStop = stops[currentStopIndex];
+                        document.getElementById('next-stop').textContent = `Próxima Parada: ${nextStop.name} - ${nextStop.time}`;
+                    }
+                }
+
+                calculateTimeDifference(nextStop);
             }
         }
 
@@ -282,7 +305,7 @@
         function requestLocationPermission() {
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(function(position) {
-                    var userPosition = L.latLng(position.coords.latitude, position.coords.longitude);
+                    userPosition = L.latLng(position.coords.latitude, position.coords.longitude);
                     updateCoordinates(userPosition);
                 }, function(error) {
                     alert('Error al obtener la ubicación: ' + error.message);
