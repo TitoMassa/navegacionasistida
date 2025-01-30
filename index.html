@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Navegación Asistida</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* More modern font */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-weight: lighter; /* Lighter font weight for header */
+        }
+        #map {
+            width: 90%;
+            max-width: 800px;
+            height: 400px;
+            margin-bottom: 20px;
+            border-radius: 12px; /* More rounded map borders */
+            overflow: hidden;
+        }
+        #controls {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            width: 90%;
+            max-width: 800px;
+            background-color: #1e1e1e; /* Slightly lighter dark background for controls */
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        #controls label, #controls input, #controls button {
+            margin-bottom: 15px;
+            color: #f0f0f0; /* Slightly softer white for labels/inputs */
+            font-weight: lighter;
+        }
+        #controls input[type="time"] {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 10px; /* Slightly larger padding for time input */
+            border-radius: 6px;
+        }
+        #controls button {
+            background-color: #00a0e9; /* More vibrant blue button */
+            color: white;
+            border: none;
+            padding: 12px 20px; /* Slightly larger button padding */
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease; /* Smooth button hover effect */
+        }
+        #controls button:hover {
+            background-color: #007bb5; /* Darker blue on hover */
+        }
+        #timeDifference {
+            font-size: 3.5em; /* Slightly larger time difference text */
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            letter-spacing: 1px; /* Slight letter spacing for better readability */
+        }
+        .time-delayed { color: #ff4d4d; } /* Brighter red */
+        .time-ontime { color: #66bb6a; } /* Softer green */
+        .time-advanced { color: #4fc3f7; } /* Lighter blue */
+
+        #arrivalBox {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 90%;
+            max-width: 800px;
+            background-color: #1e1e1e;
+            border-radius: 12px;
+            padding: 15px 25px;
+            box-sizing: border-box;
+            margin-bottom: 30px;
+        }
+        #arrivalBoxLabel {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #f0f0f0;
+        }
+        #arrivalTimeCountdown {
+            font-size: 2em;
+            font-weight: bold;
+            color: white;
+            min-width: 80px; /* Ensure some width for "ARRIBANDO" text */
+            text-align: right;
+        }
+
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</head>
+<body>
+
+    <h1>Navegación Asistida</h1>
+
+    <div id="controls">
+        <label for="startTime">Hora de Salida:</label>
+        <input type="time" id="startTime" value="10:00">
+
+        <label for="destinationTime">Hora de Llegada:</label>
+        <input type="time" id="destinationTime" value="11:00">
+
+        <button id="startNavigation">Iniciar Navegación</button>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="timeDifference">Esperando inicio...</div>
+
+    <div id="arrivalBox">
+        <div id="arrivalBoxLabel">LLEGADA</div>
+        <div id="arrivalTimeCountdown">-- min.</div>
+    </div>
+
+    <script>
+        var map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var startMarker = null;
+        var destinationMarker = null;
+        var startTimeInput = document.getElementById('startTime');
+        var destinationTimeInput = document.getElementById('destinationTime');
+        var startNavigationButton = document.getElementById('startNavigation');
+        var timeDifferenceDisplay = document.getElementById('timeDifference');
+        var arrivalTimeCountdownDisplay = document.getElementById('arrivalTimeCountdown');
+
+        var plannedDepartureTime = null;
+        var plannedArrivalTime = null;
+        var navigationActive = false;
+        var watchId = null;
+        var totalPlannedDistance = 0;
+        var userLocation = null;
+        var timeDifferenceValue = 0; // Store time difference in milliseconds for arrival time calculation
+
+
+        function updateTimeDifference() {
+            if (!navigationActive || !plannedDepartureTime || !plannedArrivalTime || !startMarker || !destinationMarker || !userLocation) return;
+
+            var now = new Date();
+            var currentTime = now.getTime();
+            var departureTime = plannedDepartureTime.getTime();
+            var arrivalTime = plannedArrivalTime.getTime();
+
+            var plannedDuration = arrivalTime - departureTime;
+
+            var distanceToDestination = userLocation.distanceTo(destinationMarker.getLatLng());
+
+            if (totalPlannedDistance <= 0) {
+                timeDifferenceDisplay.textContent = "Distancia no calculada.";
+                return;
+            }
+
+            var spatialProgress = (totalPlannedDistance - distanceToDestination) / totalPlannedDistance;
+
+            if (spatialProgress < 0) spatialProgress = 0;
+            if (spatialProgress > 1) spatialProgress = 1;
+
+            var expectedElapsedTime = spatialProgress * plannedDuration;
+            var expectedTime = departureTime + expectedElapsedTime;
+
+            timeDifferenceValue = expectedTime - currentTime; // Store the raw difference in milliseconds
+            var timeDifferenceMs = Math.abs(timeDifferenceValue);
+            var differenceSign = timeDifferenceValue >= 0 ? '+' : '-';
+
+
+            var minutes = Math.floor((timeDifferenceMs / (1000 * 60)) % 60);
+            var totalMinutes = Math.floor(timeDifferenceMs / (1000 * 60));
+            var seconds = Math.floor((timeDifferenceMs / 1000) % 60);
+
+            var formattedMinutes = String(totalMinutes).padStart(2, '0');
+            var formattedSeconds = String(seconds).padStart(2, '0');
+
+            var timeString = differenceSign + formattedMinutes + ':' + formattedSeconds;
+            timeDifferenceDisplay.textContent = timeString;
+
+            if (timeDifferenceMs > 120000 && differenceSign === '-') {
+                timeDifferenceDisplay.className = 'time-delayed';
+            } else if (timeDifferenceMs <= 120000 && timeDifferenceMs >= -120000) {
+                timeDifferenceDisplay.className = 'time-ontime';
+            } else if (timeDifferenceMs < -120000) {
+                timeDifferenceDisplay.className = 'time-advanced';
+            }
+
+            updateArrivalTimeCountdown(); // Update arrival time countdown every time difference is updated
+        }
+
+        function updateArrivalTimeCountdown() {
+            if (!navigationActive || !plannedDepartureTime || !plannedArrivalTime) return;
+
+            var now = new Date();
+            var currentTime = now.getTime();
+            var departureTime = plannedDepartureTime.getTime();
+            var arrivalTime = plannedArrivalTime.getTime();
+
+            if (currentTime < departureTime) { // Before start time
+                var timeLeftBeforeArrival = arrivalTime - currentTime;
+                var minutesLeft = Math.floor(timeLeftBeforeArrival / (1000 * 60));
+                if (minutesLeft < 1) {
+                    arrivalTimeCountdownDisplay.textContent = "ARRIBANDO";
+                } else {
+                    arrivalTimeCountdownDisplay.textContent = minutesLeft + " min.";
+                }
+            } else { // After or at start time, adjust by time difference
+                var adjustedArrivalTime = plannedArrivalTime.getTime() - timeDifferenceValue;
+                var timeLeftAdjusted = adjustedArrivalTime - currentTime;
+
+                if (timeLeftAdjusted <= 0) {
+                     arrivalTimeCountdownDisplay.textContent = "ARRIBANDO";
+                } else {
+                    var minutesLeftAdjusted = Math.floor(timeLeftAdjusted / (1000 * 60));
+                    if (minutesLeftAdjusted < 1) {
+                        arrivalTimeCountdownDisplay.textContent = "ARRIBANDO";
+                    }
+                    else {
+                        arrivalTimeCountdownDisplay.textContent = minutesLeftAdjusted + " min.";
+                    }
+                }
+            }
+        }
+
+
+        function startNavigation() {
+            if (!startMarker || !destinationMarker) {
+                alert("Por favor, selecciona un punto de inicio y un punto de destino en el mapa.");
+                return;
+            }
+
+            plannedDepartureTime = parseTimeInputValue(startTimeInput.value);
+            plannedArrivalTime = parseTimeInputValue(destinationTimeInput.value);
+
+            if (!plannedDepartureTime || !plannedArrivalTime) {
+                alert("Por favor, introduce horarios de salida y llegada válidos.");
+                return;
+            }
+
+            if (plannedArrivalTime <= plannedDepartureTime) {
+                alert("La hora de llegada debe ser posterior a la hora de salida.");
+                return;
+            }
+
+            totalPlannedDistance = startMarker.getLatLng().distanceTo(destinationMarker.getLatLng());
+
+            navigationActive = true;
+            startNavigationButton.disabled = true;
+            timeDifferenceDisplay.textContent = "Calculando diferencia de tiempo...";
+            timeDifferenceDisplay.className = '';
+            arrivalTimeCountdownDisplay.textContent = "-- min."; // Reset arrival time countdown
+
+            setInterval(updateTimeDifference, 1000);
+            setInterval(updateArrivalTimeCountdown, 1000); // Ensure arrival time updates every second as well
+
+
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    function(position) {
+                        userLocation = L.latLng(position.coords.latitude, position.coords.longitude);
+                        console.log("Posición GPS actualizada:", position.coords.latitude, position.coords.longitude);
+                    },
+                    function(error) {
+                        console.error("Error al obtener la ubicación GPS:", error.message);
+                        alert("Error al obtener la ubicación GPS: " + error.message);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 10000
+                    }
+                );
+            } else {
+                alert("Geolocalización no soportada por este navegador.");
+            }
+        }
+
+        function parseTimeInputValue(timeString) {
+            if (!timeString) return null;
+            var parts = timeString.split(':');
+            if (parts.length !== 2) return null;
+            var hours = parseInt(parts[0], 10);
+            var minutes = parseInt(parts[1], 10);
+            if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+                return null;
+            }
+            var now = new Date();
+            var plannedTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+            return plannedTime;
+        }
+
+
+        map.on('click', function(e) {
+            if (!startMarker) {
+                if (startMarker) {
+                    map.removeLayer(startMarker);
+                }
+                startMarker = L.marker(e.latlng).addTo(map).bindPopup("Punto de Inicio").openPopup();
+                if (destinationMarker) {
+                    totalPlannedDistance = startMarker.getLatLng().distanceTo(destinationMarker.getLatLng());
+                }
+            } else if (!destinationMarker) {
+                if (destinationMarker) {
+                    map.removeLayer(destinationMarker);
+                }
+                destinationMarker = L.marker(e.latlng).addTo(map).bindPopup("Punto de Destino").openPopup();
+                totalPlannedDistance = startMarker.getLatLng().distanceTo(destinationMarker.getLatLng());
+            } else {
+                alert("Ya has seleccionado punto de inicio y destino. Para volver a empezar, recarga la página.");
+            }
+        });
+
+        startNavigationButton.addEventListener('click', startNavigation);
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    map.setView([position.coords.latitude, position.coords.longitude], 13);
+                },
+                function(error) {
+                    console.error("Error al obtener la ubicación inicial:", error.message);
+                    alert("Error al obtener la ubicación inicial: " + error.message + ". Usando vista de mapa predeterminada.");
+                }
+            );
+        } else {
+            alert("Geolocalización no soportada por este navegador. Usando vista de mapa predeterminada.");
+        }
+    </script>
+
+</body>
+</html>
