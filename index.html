@@ -139,6 +139,8 @@
                 stops.forEach(function(stop) {
                     L.marker(stop.latlng).addTo(map).bindPopup(`Parada: ${stop.name}, Hora: ${stop.time}`).openPopup();
                 });
+                currentStopIndex = 0; // Reiniciar el índice de la parada actual
+                updateNavigationImmediately(); // Actualizar la navegación inmediatamente
             }
         }
 
