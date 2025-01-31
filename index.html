@@ -3,233 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navegación Asistida</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
+    <title>Aplicación de Navegación Asistida</title>
+    <!-- Hojas de estilo -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
         body {
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            font-family: 'Arial', sans-serif;
-            background-color: #121212;
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
         }
-        #mapid {
-            width: 80%;
-            height: 600px;
-            max-width: 1000px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        #controls-container {
-            width: 80%;
-            max-width: 1000px;
-            padding: 20px;
-            background-color: rgba(0,0,0,0.5);
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 20px;
+        #map {
+            height: 60vh;
+            width: 100%;
         }
         #controls {
-            background: rgba(0,0,0,0.5);
             padding: 10px;
-            border-radius: 5px;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
+            background-color: #f4f4f4;
+            border-bottom: 1px solid #ccc;
         }
         #points-list {
-            background: rgba(0,0,0,0.5);
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
             padding: 10px;
-            border-radius: 5px;
-            width: 100%;
             margin-top: 10px;
         }
-        #timeDifference {
-            background: rgba(0,0,0,0.5);
-            padding: 10px;
-            border-radius: 5px;
-            width: 100%;
-            text-align: center;
-            margin-top: 20px;
+        .point-item {
+            margin-bottom: 5px;
         }
-        input, button {
-            margin-top: 5px;
-            padding: 5px;
-            font-size: 14px;
-            width: 100%;
+        .time-difference {
+            font-weight: bold;
+            color: red;
         }
     </style>
 </head>
 <body>
-    <div id="mapid"></div>
-    <div id="controls-container">
-        <div id="controls">
-            <button onclick="deletePoint()">Eliminar Punto</button>
-            <button onclick="startNavigation()">Iniciar Navegación</button>
-        </div>
-        <div id="points-list">Puntos:</div>
-        <div id="timeDifference">Diferencia de Tiempo: 00:00</div>
+
+    <!-- Controles de la aplicación -->
+    <div id="controls">
+        <button id="start-navigation">Iniciar Navegación</button>
+        <button id="add-point">Agregar Punto</button>
+        <button id="remove-point">Eliminar Último Punto</button>
+        <div id="time-difference"></div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
-    <script>
-        let map;
-        let pointSource = L.featureGroup();
-        let points = [];
-        let currentPointIndex = 0;
-        let watchingPosition = false;
-        let positionWatchId;
-        let userMarker;
+    <!-- Mapa -->
+    <div id="map"></div>
 
-        document.addEventListener('DOMContentLoaded', function() {
-            map = L.map('mapid');
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+    <!-- Lista de puntos -->
+    <div id="points-list"></div>
 
-            map.addLayer(pointSource);
-
-            // Get user's current position and center the map
-            navigator.geolocation.getCurrentPosition(function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                map.setView([lat, lng], 13);
-            }, function(error) {
-                console.error('Error al obtener la ubicación:', error);
-            });
-
-            // Add point on map click
-            map.on('click', function(e) {
-                const latlng = e.latlng;
-                const arrivalTime = prompt('Ingrese la hora de llegada (formato YYYY-MM-DDTHH:MM):');
-                const departureTime = prompt('Ingrese la hora de salida (formato YYYY-MM-DDTHH:MM):');
-                if (arrivalTime && departureTime) {
-                    const point = { 
-                        lat: latlng.lat, 
-                        lng: latlng.lng, 
-                        arrivalTime: new Date(arrivalTime), 
-                        departureTime: new Date(departureTime), 
-                        marker: L.marker([latlng.lat, latlng.lng]).addTo(map)
-                    };
-                    points.push(point);
-                    updatePointsList();
-                }
-            });
-        });
-
-        function watchPosition() {
-            if (!watchingPosition) {
-                positionWatchId = navigator.geolocation.watchPosition(
-                    function(position) {
-                        updatePosition(position.coords.latitude, position.coords.longitude);
-                    },
-                    function(error) {
-                        console.error('Error al obtener la ubicación:', error);
-                    },
-                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-                );
-                watchingPosition = true;
-            }
-        }
-
-        function updatePosition(lat, lng) {
-            if (userMarker) {
-                map.removeLayer(userMarker);
-            }
-            userMarker = L.circle([lat, lng], {
-                color: 'blue',
-                fillColor: '#ccc',
-                fillOpacity: 0.5,
-                radius: 20
-            }).addTo(map);
-
-            // Check if user is within 20 meters of current point
-            if (currentPointIndex < points.length) {
-                const point = points[currentPointIndex];
-                const distance = getDistance(lat, lng, point.lat, point.lng);
-                if (distance <= 20) {
-                    // User has reached the point
-                    // Logic to handle reaching the point
-                }
-            }
-
-            // Calculate time difference
-            calculateTimeDifference(lat, lng);
-        }
-
-        function getDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // meters
-            const φ1 = lat1 * Math.PI/180;
-            const φ2 = lat2 * Math.PI/180;
-            const Δφ = (lat2-lat1) * Math.PI/180;
-            const Δλ = (lon2-lon1) * Math.PI/180;
-
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-            const d = R * c;
-            return d;
-        }
-
-        function updatePointsList() {
-            const pointsList = document.getElementById('points-list');
-            pointsList.innerHTML = 'Puntos:';
-            points.forEach((point, index) => {
-                const pointDiv = document.createElement('div');
-                pointDiv.innerHTML = `Punto ${index + 1}: Lat ${point.lat}, Lng ${point.lng}, Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`;
-                pointsList.appendChild(pointDiv);
-            });
-        }
-
-        function deletePoint() {
-            if (points.length > 0) {
-                const lastPoint = points.pop();
-                map.removeLayer(lastPoint.marker);
-                updatePointsList();
-            }
-        }
-
-        function calculateTimeDifference(lat, lng) {
-            if (currentPointIndex >= points.length) {
-                document.getElementById('timeDifference').innerText = 'Diferencia de Tiempo: Llegada';
-                return;
-            }
-
-            const point = points[currentPointIndex];
-            const targetTime = point.arrivalTime;
-            const currentTime = new Date();
-            const timeDiff = targetTime - currentTime;
-
-            let diffStr;
-            if (timeDiff > 0) {
-                const minutes = Math.floor(timeDiff / 60000);
-                const seconds = Math.floor((timeDiff % 60000) / 1000);
-                diffStr = `+${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            } else {
-                const minutes = Math.floor(-timeDiff / 60000);
-                const seconds = Math.floor((-timeDiff % 60000) / 1000);
-                diffStr = `-${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
-
-            document.getElementById('timeDifference').innerText = `Diferencia de Tiempo: ${diffStr}`;
-        }
-
-        function startNavigation() {
-            // Logic to start navigation
-            watchingPosition = true;
-            watchPosition();
-        }
-    </script>
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
