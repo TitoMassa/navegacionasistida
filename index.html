@@ -77,7 +77,8 @@
             <button onclick="editPoint()">Editar Punto</button>
             <button onclick="deletePoint()">Eliminar Punto</button>
             <button onclick="startNavigation()">Iniciar Navegación</button>
-            <input type="datetime-local" id="pointTime" placeholder="Hora">
+            <input type="datetime-local" id="pointTimeArrival" placeholder="Hora de Llegada">
+            <input type="datetime-local" id="pointTimeDeparture" placeholder="Hora de Salida">
         </div>
         <div id="points-list">Puntos:</div>
         <div id="timeDifference">Diferencia de Tiempo: 00:00</div>
@@ -162,8 +163,14 @@
             const marker = L.marker(map.getCenter(), { draggable: true }).addTo(map);
             marker.on('click', function() {
                 const latlng = marker.getLatLng();
-                const time = document.getElementById('pointTime').value;
-                points.push({ lat: latlng.lat, lng: latlng.lng, time: new Date(time) });
+                const arrivalTime = document.getElementById('pointTimeArrival').value;
+                const departureTime = document.getElementById('pointTimeDeparture').value;
+                points.push({ 
+                    lat: latlng.lat, 
+                    lng: latlng.lng, 
+                    arrivalTime: new Date(arrivalTime), 
+                    departureTime: new Date(departureTime) 
+                });
                 updatePointsList();
             });
         }
@@ -173,7 +180,7 @@
             pointsList.innerHTML = 'Puntos:';
             points.forEach((point, index) => {
                 const pointDiv = document.createElement('div');
-                pointDiv.innerHTML = `Punto ${index + 1}: Lat ${point.lat}, Lng ${point.lng}, Time ${point.time}`;
+                pointDiv.innerHTML = `Punto ${index + 1}: Lat ${point.lat}, Lng ${point.lng}, Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`;
                 pointsList.appendChild(pointDiv);
             });
         }
@@ -193,7 +200,7 @@
             }
 
             const point = points[currentPointIndex];
-            const targetTime = point.time;
+            const targetTime = point.arrivalTime;
             const currentTime = new Date();
             const timeDiff = targetTime - currentTime;
 
