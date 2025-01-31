@@ -7,6 +7,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 let userMarker = null; // Marcador de la ubicación del usuario
 let points = []; // Array para almacenar los puntos agregados
 let isNavigationActive = false; // Indica si la navegación está activa
+const pointRadiusMeters = 20; // Radio de 20 metros alrededor de cada punto
 
 // Obtener la ubicación actual del usuario en tiempo real
 function getUserLocation() {
@@ -24,8 +25,9 @@ function getUserLocation() {
 
             map.setView(userLatLng, 15); // Centrar el mapa en la ubicación actual
 
-            // Verificar la diferencia de tiempo si la navegación está activa
+            // Verificar si el usuario está dentro del radio de algún punto
             if (isNavigationActive) {
+                checkIfUserIsInsidePoint(userLatLng);
                 calculateTimeDifference(userLatLng);
             }
         }, error => {
@@ -60,7 +62,12 @@ map.on('click', function(e) {
 
 // Agregar un punto al mapa y a la lista
 function addPointToMapAndList(point) {
-    const marker = L.circleMarker([point.lat, point.lng], { radius: 5, color: '#ff5722' }).addTo(map).bindPopup(`Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`);
+    const marker = L.circle([point.lat, point.lng], {
+        radius: metersToPixelsAtZoom(pointRadiusMeters, map.getZoom()), // Convertir metros a píxeles
+        color: '#ff5722',
+        fillColor: '#ff5722',
+        fillOpacity: 0.2
+    }).addTo(map).bindPopup(`Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`);
     updatePointsList();
 }
 
@@ -82,17 +89,40 @@ document.getElementById('remove-point').addEventListener('click', function() {
         points.pop(); // Eliminar el último punto del array
         updatePointsList();
         map.eachLayer(layer => {
-            if (layer instanceof L.CircleMarker) {
+            if (layer instanceof L.Circle) {
                 map.removeLayer(layer);
             }
         });
         points.forEach(point => {
-            L.circleMarker([point.lat, point.lng], { radius: 5, color: '#ff5722' }).addTo(map);
+            L.circle([point.lat, point.lng], {
+                radius: metersToPixelsAtZoom(pointRadiusMeters, map.getZoom()),
+                color: '#ff5722',
+                fillColor: '#ff5722',
+                fillOpacity: 0.2
+            }).addTo(map);
         });
     } else {
         alert("No hay puntos para eliminar.");
     }
 });
+
+// Verificar si el usuario está dentro del radio de algún punto
+function checkIfUserIsInsidePoint(userLatLng) {
+    let isInsideAnyPoint = false;
+
+    points.forEach((point, index) => {
+        const distance = calculateDistance(userLatLng[0], userLatLng[1], point.lat, point.lng);
+
+        if (distance <= pointRadiusMeters) {
+            isInsideAnyPoint = true;
+            document.getElementById('location-status').innerHTML = `Ubicación: Dentro del Punto ${index + 1}`;
+        }
+    });
+
+    if (!isInsideAnyPoint) {
+        document.getElementById('location-status').innerHTML = "Ubicación: No estás dentro de ningún punto.";
+    }
+}
 
 // Calcular la diferencia de tiempo
 function calculateTimeDifference(userLatLng) {
@@ -129,7 +159,7 @@ function calculateTimeDifference(userLatLng) {
         const userDistanceToStart = calculateDistance(userLatLng[0], userLatLng[1], startPoint.lat, startPoint.lng);
         const userDistanceToEnd = calculateDistance(userLatLng[0], userLatLng[1], endPoint.lat, endPoint.lng);
 
-        if (userDistanceToStart + userDistanceToEnd <= segmentDistance + 20) { // Margen de 20 metros
+        if (userDistanceToStart + userDistanceToEnd <= segmentDistance + pointRadiusMeters) { // Margen de 20 metros
             currentSegmentIndex = i;
             distanceToCurrentPosition += segmentDistance - userDistanceToEnd;
             break;
@@ -181,6 +211,13 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 // Convertir grados a radianes
 function toRadians(degrees) {
     return degrees * Math.PI / 180;
+}
+
+// Convertir metros a píxeles según el nivel de zoom del mapa
+function metersToPixelsAtZoom(meters, zoom) {
+    const earthCircumference = 40075016.686; // Circunferencia de la Tierra en metros
+    const pixelsPerMeter = (256 * Math.pow(2, zoom)) / earthCircumference;
+    return meters * pixelsPerMeter;
 }
 
 // Botón "Iniciar Navegación"
