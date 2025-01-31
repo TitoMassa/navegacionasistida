@@ -92,14 +92,33 @@
         let currentPointIndex = 0;
         let watchingPosition = false;
         let positionWatchId;
+        let userMarker;
 
         document.addEventListener('DOMContentLoaded', function() {
-            map = L.map('mapid').setView([51.505, -0.09], 13);
+            map = L.map('mapid');
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
             map.addLayer(pointSource);
+
+            // Get user's current position and center the map
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                map.setView([lat, lng], 13);
+                if (userMarker) {
+                    map.removeLayer(userMarker);
+                }
+                userMarker = L.circle([lat, lng], {
+                    color: 'blue',
+                    fillColor: '#ccc',
+                    fillOpacity: 0.5,
+                    radius: 20
+                }).addTo(map);
+            }, function(error) {
+                console.error('Error al obtener la ubicación:', error);
+            });
 
             // Start watching position
             watchPosition();
@@ -121,13 +140,16 @@
         }
 
         function updatePosition(lat, lng) {
-            // Update user's position on the map
-            L.circle([lat, lng], {
+            if (userMarker) {
+                map.removeLayer(userMarker);
+            }
+            userMarker = L.circle([lat, lng], {
                 color: 'blue',
                 fillColor: '#ccc',
                 fillOpacity: 0.5,
                 radius: 20
             }).addTo(map);
+            map.setView([lat, lng], 13);
 
             // Check if user is within 20 meters of current point
             if (currentPointIndex < points.length) {
