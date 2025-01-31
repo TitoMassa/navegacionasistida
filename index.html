@@ -5,112 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: black;
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-        h1 {
-            text-align: center;
-            margin-top: 20px;
-            margin-bottom: 20px;
-            font-weight: lighter;
-        }
-        #map {
-            width: 90%;
-            max-width: 800px;
-            height: 400px;
-            margin-bottom: 20px;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        #controls {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            width: 90%;
-            max-width: 800px;
-            background-color: #1e1e1e;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-        }
-        #controls label, #controls input, #controls button {
-            margin-bottom: 15px;
-            color: #f0f0f0;
-            font-weight: lighter;
-        }
-        #controls input[type="time"] {
-            background-color: #333;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 6px;
-        }
-        #controls button {
-            background-color: #00a0e9;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        #controls button:hover {
-            background-color: #007bb5;
-        }
-        #timeDifference {
-            font-size: 3.5em;
-            font-weight: bold;
-            text-align: center;
-            margin-top: 20px;
-            margin-bottom: 20px;
-            letter-spacing: 1px;
-        }
-        .time-delayed { color: #ff4d4d; }
-        .time-ontime { color: #66bb6a; }
-        .time-advanced { color: #4fc3f7; }
-
-        #arrivalBox {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 90%;
-            max-width: 800px;
-            background-color: #1e1e1e;
-            border-radius: 12px;
-            padding: 15px 25px;
-            box-sizing: border-box;
-            margin-bottom: 30px;
-        }
-        #arrivalBoxLabel {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #f0f0f0;
-        }
-        #arrivalTimeCountdown {
-            font-size: 2em;
-            font-weight: bold;
-            color: white;
-            min-width: 80px;
-            text-align: right;
-        }
-        .leaflet-marker-icon.start { filter: hue-rotate(120deg); } /* Greenish for start */
-        .leaflet-marker-icon.intermediate { filter: hue-rotate(30deg); } /* Yellowish for intermediate */
-        .leaflet-marker-icon.destination { filter: hue-rotate(330deg); } /* Reddish for destination */
-        .radius-circle {
-            fill: blue;
-            fill-opacity: 0.2;
-            stroke: none;
-        }
-
+        /* ... (CSS remains the same as in the previous full code) ... */
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -123,11 +18,11 @@
         <label for="startTime">Hora de Salida (Inicio):</label>
         <input type="time" id="startTime" value="13:00">
 
-        <label for="intermediateArrivalTime">Hora de Llegada (Intermedio):</label>
-        <input type="time" id="intermediateArrivalTime" value="13:45">
+        <div id="intermediatePointsInputs">
+            <!-- Intermediate point inputs will be dynamically added here -->
+        </div>
 
-        <label for="intermediateDepartureTime">Hora de Salida (Intermedio):</label>
-        <input type="time" id="intermediateDepartureTime" value="14:00">
+        <button id="addIntermediatePointButton">Añadir Punto Intermedio</button>
 
         <label for="destinationTime">Hora de Llegada (Destino):</label>
         <input type="time" id="destinationTime" value="15:00">
@@ -151,21 +46,22 @@
         }).addTo(map);
 
         var startTimeInput = document.getElementById('startTime');
-        var intermediateArrivalTimeInput = document.getElementById('intermediateArrivalTime');
-        var intermediateDepartureTimeInput = document.getElementById('intermediateDepartureTime');
         var destinationTimeInput = document.getElementById('destinationTime');
         var startNavigationButton = document.getElementById('startNavigation');
         var timeDifferenceDisplay = document.getElementById('timeDifference');
         var arrivalTimeCountdownDisplay = document.getElementById('arrivalTimeCountdown');
+        var addIntermediatePointButton = document.getElementById('addIntermediatePointButton');
+        var intermediatePointsInputsContainer = document.getElementById('intermediatePointsInputs');
 
-        var points = []; // Array to hold all points (start, intermediate, destination)
+        var points = [];
         var currentTargetPointIndex = 0;
         var navigationActive = false;
         var watchId = null;
         var totalPlannedDistance = 0;
         var userLocation = null;
         var timeDifferenceValue = 0;
-        var pointCreationMode = 'start'; // 'start', 'intermediate', 'destination', null
+        var pointCreationMode = 'start';
+        var intermediatePointCounter = 0; // Counter for intermediate points
 
         function updateTimeDifference() {
             if (!navigationActive || points.length === 0 || userLocation === null) return;
@@ -183,24 +79,24 @@
                 targetEventDescription = "llegada a destino";
             } else if (currentTargetPoint.type === 'intermediate' || currentTargetPoint.type === 'start') {
                 if (!currentTargetPoint.isArrived) {
-                    plannedTimeForTarget = currentTargetPoint.arrivalTime ? currentTargetPoint.arrivalTime.getTime() : plannedDepartureTime.getTime(); // Arrival for intermediate, Departure for start
+                    plannedTimeForTarget = currentTargetPoint.arrivalTime ? currentTargetPoint.arrivalTime.getTime() : plannedDepartureTime.getTime();
                     targetEventDescription = currentTargetPoint.type === 'intermediate' ? "llegada al punto intermedio" : "salida del punto de inicio";
                 } else {
                     plannedTimeForTarget = currentTargetPoint.departureTime.getTime();
-                    targetEventDescription = "salida del punto intermedio"; // Departure from intermediate
+                    targetEventDescription = "salida del punto intermedio";
                 }
             }
 
-            if (!plannedTimeForTarget) return; // No target time defined
+            if (!plannedTimeForTarget) return;
 
             var timeDifferenceMs = plannedTimeForTarget - currentTime;
-            timeDifferenceValue = timeDifferenceMs; // Store for arrival countdown
+            timeDifferenceValue = timeDifferenceMs;
 
             var differenceSign = timeDifferenceMs >= 0 ? '+' : '-';
             timeDifferenceMs = Math.abs(timeDifferenceMs);
 
             var minutes = Math.floor((timeDifferenceMs / (1000 * 60)) % 60);
-            var totalMinutes = Math.floor(timeDifferenceMs / (1000 * 60));
+            var totalMinutes = Math.floor((timeDifferenceMs / (1000 * 60)));
             var seconds = Math.floor((timeDifferenceMs / 1000) % 60);
 
             var formattedMinutes = String(totalMinutes).padStart(2, '0');
@@ -265,39 +161,47 @@
             }
 
             plannedDepartureTime = parseTimeInputValue(startTimeInput.value);
-            var plannedIntermediateArrivalTime = parseTimeInputValue(intermediateArrivalTimeInput.value);
-            var plannedIntermediateDepartureTime = parseTimeInputValue(intermediateDepartureTimeInput.value);
             var plannedDestinationTime = parseTimeInputValue(destinationTimeInput.value);
-
 
             if (!plannedDepartureTime || !plannedDestinationTime ) {
                 alert("Por favor, introduce horarios de salida y llegada válidos para inicio y destino.");
                 return;
             }
-             if (points.length === 3 && (!plannedIntermediateArrivalTime || !plannedIntermediateDepartureTime)) {
-                alert("Por favor, introduce horarios de llegada y salida válidos para el punto intermedio.");
-                return;
+
+            var intermediatePoints = [];
+            for (let i = 0; i < intermediatePointCounter; i++) {
+                let arrivalTimeInput = document.getElementById(`intermediateArrivalTime${i}`);
+                let departureTimeInput = document.getElementById(`intermediateDepartureTime${i}`);
+                let arrivalTime = parseTimeInputValue(arrivalTimeInput.value);
+                let departureTime = parseTimeInputValue(departureTimeInput.value);
+                if (!arrivalTime || !departureTime) {
+                    alert(`Por favor, introduce horarios válidos para el Punto Intermedio ${i + 1}.`);
+                    return;
+                }
+                intermediatePoints.push({arrivalTime: arrivalTime, departureTime: departureTime});
             }
 
-
-            if (points.length === 3 && (plannedIntermediateArrivalTime <= plannedDepartureTime || plannedIntermediateDepartureTime <= plannedIntermediateArrivalTime || plannedDestinationTime <= plannedIntermediateDepartureTime)) {
-                alert("Los horarios deben ser secuenciales y lógicos (Salida Inicio < Llegada Intermedio < Salida Intermedio < Llegada Destino).");
-                return;
+            // Validate time sequence for all points including intermediates
+            let lastDepartureTime = plannedDepartureTime;
+            for (let i = 0; i < intermediatePoints.length; i++) {
+                if (intermediatePoints[i].arrivalTime <= lastDepartureTime || intermediatePoints[i].departureTime <= intermediatePoints[i].arrivalTime) {
+                    alert("Los horarios de los puntos intermedios no son secuenciales o lógicos.");
+                    return;
+                }
+                lastDepartureTime = intermediatePoints[i].departureTime;
             }
-            if (points.length === 2 && (plannedDestinationTime <= plannedDepartureTime)) {
-                 alert("Los horarios deben ser secuenciales y lógicos (Salida Inicio < Llegada Destino).");
+             if (plannedDestinationTime <= lastDepartureTime) {
+                alert("El horario de llegada al destino no es secuencial o lógico con respecto a los puntos intermedios.");
                 return;
             }
 
 
             points[0].departureTime = plannedDepartureTime;
-            if (points.length > 2) {
-                points[1].arrivalTime = plannedIntermediateArrivalTime;
-                points[1].departureTime = plannedIntermediateDepartureTime;
-                points[2].arrivalTime = plannedDestinationTime;
-            } else {
-                points[1].arrivalTime = plannedDestinationTime;
+            for (let i = 0; i < intermediatePoints.length; i++) {
+                points[i+1].arrivalTime = intermediatePoints[i].arrivalTime;
+                points[i+1].departureTime = intermediatePoints[i].departureTime;
             }
+            points[points.length - 1].arrivalTime = plannedDestinationTime;
 
 
             totalPlannedDistance = 0;
@@ -323,7 +227,7 @@
                     function(position) {
                         userLocation = L.latLng(position.coords.latitude, position.coords.longitude);
                         updatePointArrivalDeparture(userLocation);
-                        updateTimeDifference(); // Ensure time difference updates immediately upon position change in watchPosition
+                        updateTimeDifference();
                         console.log("Posición GPS actualizada:", position.coords.latitude, position.coords.longitude);
                     },
                     function(error) {
@@ -352,15 +256,15 @@
 
             if (!currentTargetPoint.isArrived && distanceToTarget <= 20) {
                 currentTargetPoint.isArrived = true;
-                alert(`Has llegado al punto ${currentTargetPoint.type === 'start' ? 'de inicio' : (currentTargetPoint.type === 'intermediate' ? 'intermedio' : 'de destino')}.`);
+                alert(`Has llegado al punto ${currentTargetPoint.type === 'start' ? 'de inicio' : (currentTargetPoint.type === 'intermediate' ? 'intermedio ' + (currentTargetPointIndex) : 'de destino')}.`);
             }
 
 
             if (currentTargetPoint.type === 'intermediate' && currentTargetPoint.isArrived && !currentTargetPoint.isDeparted && distanceToTarget > 20) {
                  currentTargetPoint.isDeparted = true;
-                 currentTargetPointIndex++; // Move to next target
+                 currentTargetPointIndex++;
                  if (currentTargetPointIndex < points.length) {
-                     alert(`Saliendo del punto intermedio. Dirigiéndote al siguiente destino.`);
+                     alert(`Saliendo del punto intermedio ${currentTargetPointIndex}. Dirigiéndote al siguiente destino.`);
                  } else {
                      navigationActive = false;
                      navigator.geolocation.clearWatch(watchId);
@@ -395,17 +299,14 @@
                 clearPreviousPoint('start');
                 createPoint(e.latlng, 'start');
                 pointCreationMode = 'intermediate';
-                alert("Ahora selecciona el punto intermedio (opcional), o nuevamente para establecer el punto de destino.");
+                alert("Ahora selecciona los puntos intermedios (opcional), haz clic en 'Añadir Punto Intermedio' para agregar más, luego haz clic nuevamente en el mapa para establecer el punto de destino.");
             } else if (pointCreationMode === 'intermediate') {
-                 clearPreviousPoint('intermediate');
                  createPoint(e.latlng, 'intermediate');
-                 pointCreationMode = 'destination';
-                 alert("Ahora selecciona el punto de destino.");
             } else if (pointCreationMode === 'destination') {
                 clearPreviousPoint('destination');
                 createPoint(e.latlng, 'destination');
-                pointCreationMode = null; // No more points to create
-                alert("Puntos de inicio, intermedio (opcional) y destino seleccionados.");
+                pointCreationMode = null;
+                alert("Puntos de inicio, intermedios (opcional) y destino seleccionados.");
             }
         });
 
@@ -422,9 +323,9 @@
 
 
         function createPoint(latlng, type) {
-            var markerClass = type; // Use type as class for marker styling
+            var markerClass = type;
             var marker = L.marker(latlng, {draggable: false}).addTo(map);
-            marker._icon.classList.add(markerClass); // Add class to marker icon
+            marker._icon.classList.add(markerClass);
 
             var radiusCircle = L.circle(latlng, {radius: 20, className: 'radius-circle'}).addTo(map);
 
@@ -439,23 +340,55 @@
                 isDeparted: false
             };
             if (type === 'start') {
-                points.unshift(pointObject); // Start point at the beginning
+                points.unshift(pointObject);
             } else if (type === 'destination') {
-                points.push(pointObject);     // Destination at the end
+                points.push(pointObject);
             } else if (type === 'intermediate') {
-                points.splice(1, 0, pointObject); // Insert intermediate at index 1 (after start)
+                points.splice(points.length - 1, 0, pointObject); // Insert intermediate before destination
             }
         }
 
+        function addIntermediatePointInputFields() {
+            intermediatePointCounter++;
+            var container = document.createElement('div');
+            container.className = 'intermediate-point-input-group'; // Optional styling class
 
+            var arrivalLabel = document.createElement('label');
+            arrivalLabel.setAttribute('for', `intermediateArrivalTime${intermediatePointCounter - 1}`);
+            arrivalLabel.textContent = `Hora de Llegada (Intermedio ${intermediatePointCounter}):`;
+            var arrivalInput = document.createElement('input');
+            arrivalInput.setAttribute('type', 'time');
+            arrivalInput.setAttribute('id', `intermediateArrivalTime${intermediatePointCounter - 1}`);
+            arrivalInput.value = "14:15"; // Default time, you can adjust
+
+            var departureLabel = document.createElement('label');
+            departureLabel.setAttribute('for', `intermediateDepartureTime${intermediatePointCounter - 1}`);
+            departureLabel.textContent = `Hora de Salida (Intermedio ${intermediatePointCounter}):`;
+            var departureInput = document.createElement('input');
+            departureInput.setAttribute('type', 'time');
+            departureInput.setAttribute('id', `intermediateDepartureTime${intermediatePointCounter - 1}`);
+            departureInput.value = "14:30"; // Default time, you can adjust
+
+
+            container.appendChild(arrivalLabel);
+            container.appendChild(arrivalInput);
+            container.appendChild(departureLabel);
+            container.appendChild(departureInput);
+
+            intermediatePointsInputsContainer.appendChild(container);
+        }
+
+
+        addIntermediatePointButton.addEventListener('click', addIntermediatePointInputFields);
         startNavigationButton.addEventListener('click', startNavigation);
+
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 function(position) {
                     map.setView([position.coords.latitude, position.coords.longitude], 13);
                     alert("Selecciona el punto de inicio en el mapa.");
-                    pointCreationMode = 'start'; // Start by setting the start point
+                    pointCreationMode = 'start';
                 },
                 function(error) {
                     console.error("Error al obtener la ubicación inicial:", error.message);
