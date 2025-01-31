@@ -16,11 +16,11 @@
             display: flex;
         }
         #mapid {
-            width: 70%;
+            width: 50%;
             height: 100vh;
         }
         #controls-container {
-            width: 30%;
+            width: 50%;
             padding: 20px;
             background-color: rgba(0,0,0,0.5);
             display: flex;
@@ -52,6 +52,8 @@
             <button onclick="editPoint()">Editar Punto</button>
             <button onclick="deletePoint()">Eliminar Punto</button>
             <input type="datetime-local" id="pointTime" placeholder="Hora">
+            <button onclick="startNavigation()">Iniciar Navegación</button>
+            <button onclick="saveRoute()">Guardar Ruta</button>
         </div>
         <div id="timeDifference">Diferencia de Tiempo: 00:00</div>
     </div>
@@ -65,6 +67,7 @@
         let currentPointIndex = 0;
         let watchingPosition = false;
         let positionWatchId;
+        let navigationStarted = false;
 
         document.addEventListener('DOMContentLoaded', function() {
             map = L.map('mapid').setView([51.505, -0.09], 13);
@@ -79,9 +82,6 @@
                 fitSelectedRoutes: false,
                 createMarker: function() { return null; } // Disable default markers
             }).addTo(map);
-
-            // Start watching position
-            watchPosition();
         });
 
         function watchPosition() {
@@ -114,12 +114,14 @@
                 const distance = getDistance(lat, lng, point.lat, point.lng);
                 if (distance <= 20) {
                     // User has reached the point
-                    // Logic to handle reaching the point
+                    currentPointIndex++;
                 }
             }
 
             // Calculate time difference
-            calculateTimeDifference(lat, lng);
+            if (navigationStarted) {
+                calculateTimeDifference(lat, lng);
+            }
         }
 
         function getDistance(lat1, lon1, lat2, lon2) {
@@ -156,6 +158,21 @@
         function updateRoutingControl() {
             const waypoints = points.map(point => L.latLng(point.lat, point.lng));
             routingControl.setWaypoints(waypoints);
+        }
+
+        function startNavigation() {
+            navigationStarted = true;
+            watchPosition();
+            currentPointIndex = 0;
+            calculateTimeDifference();
+        }
+
+        function saveRoute() {
+            const routeName = prompt("Ingrese el nombre para la ruta:");
+            if (routeName) {
+                localStorage.setItem(routeName, JSON.stringify(points));
+                alert('Ruta guardada exitosamente.');
+            }
         }
 
         function calculateTimeDifference(lat, lng) {
