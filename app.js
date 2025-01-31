@@ -6,8 +6,6 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let userMarker = null; // Marcador de la ubicación del usuario
 let points = []; // Array para almacenar los puntos agregados
-let currentPointIndex = -1; // Índice del punto actual (-1 significa que no está en ningún punto)
-const pointRadius = 20; // Radio de 20 metros alrededor de cada punto
 let isNavigationActive = false; // Indica si la navegación está activa
 
 // Obtener la ubicación actual del usuario en tiempo real
@@ -26,9 +24,9 @@ function getUserLocation() {
 
             map.setView(userLatLng, 15); // Centrar el mapa en la ubicación actual
 
-            // Verificar si el usuario está dentro del radio de algún punto
+            // Verificar la diferencia de tiempo si la navegación está activa
             if (isNavigationActive) {
-                checkIfUserIsInsidePoint(userLatLng);
+                calculateTimeDifference(userLatLng);
             }
         }, error => {
             console.error("Error al obtener la ubicación:", error);
@@ -43,13 +41,15 @@ map.on('click', function(e) {
     const lat = e.latlng.lat.toFixed(6);
     const lng = e.latlng.lng.toFixed(6);
 
-    // Solicitar al usuario la hora de salida
+    // Solicitar al usuario las horas de llegada y salida
+    const arrivalTime = prompt("Ingrese la hora de llegada (HH:mm):");
     const departureTime = prompt("Ingrese la hora de salida (HH:mm):");
 
-    if (departureTime) {
+    if (arrivalTime || departureTime) {
         const point = {
             lat,
             lng,
+            arrivalTime,
             departureTime
         };
 
@@ -60,7 +60,7 @@ map.on('click', function(e) {
 
 // Agregar un punto al mapa y a la lista
 function addPointToMapAndList(point) {
-    const marker = L.circleMarker([point.lat, point.lng], { radius: 5, color: 'blue' }).addTo(map).bindPopup(`Salida: ${point.departureTime}`);
+    const marker = L.circleMarker([point.lat, point.lng], { radius: 5, color: 'blue' }).addTo(map).bindPopup(`Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`);
     updatePointsList();
 }
 
@@ -71,7 +71,7 @@ function updatePointsList() {
     points.forEach((point, index) => {
         const item = document.createElement('div');
         item.className = 'point-item';
-        item.innerHTML = `Punto ${index + 1}: Lat: ${point.lat}, Lng: ${point.lng}, Salida: ${point.departureTime}`;
+        item.innerHTML = `Punto ${index + 1}: Lat: ${point.lat}, Lng: ${point.lng}, Llegada: ${point.arrivalTime || 'N/A'}, Salida: ${point.departureTime || 'N/A'}`;
         list.appendChild(item);
     });
 }
@@ -94,34 +94,72 @@ document.getElementById('remove-point').addEventListener('click', function() {
     }
 });
 
-// Verificar si el usuario está dentro del radio de algún punto
-function checkIfUserIsInsidePoint(userLatLng) {
-    const userLat = userLatLng[0];
-    const userLng = userLatLng[1];
-
-    let isInsideAnyPoint = false;
-
-    points.forEach((point, index) => {
-        const pointLatLng = [point.lat, point.lng];
-        const distance = calculateDistance(userLat, userLng, point.lat, point.lng);
-
-        if (distance <= pointRadius) {
-            // El usuario está dentro del radio del punto
-            isInsideAnyPoint = true;
-            if (currentPointIndex !== index) {
-                currentPointIndex = index;
-                document.getElementById('location-status').innerHTML = `Ubicación: Punto ${index + 1}`;
-                calculateTimeDifferenceForDeparture(point.departureTime);
-            }
-        }
-    });
-
-    // Si el usuario no está dentro de ningún punto
-    if (!isInsideAnyPoint && currentPointIndex !== -1) {
-        currentPointIndex = -1;
-        document.getElementById('location-status').innerHTML = "Ubicación: No estás dentro de ningún punto.";
-        document.getElementById('time-difference').innerHTML = "";
+// Calcular la diferencia de tiempo
+function calculateTimeDifference(userLatLng) {
+    if (points.length < 2) {
+        document.getElementById('time-difference').innerHTML = "Se necesitan al menos 2 puntos para calcular la diferencia de tiempo.";
+        return;
     }
+
+    let totalDistance = 0; // Distancia total entre todos los puntos
+    let totalTimeInSeconds = 0; // Tiempo total programado entre todos los puntos
+
+    // Calcular la distancia total y el tiempo total programado
+    for (let i = 0; i < points.length - 1; i++) {
+        const startPoint = points[i];
+        const endPoint = points[i + 1];
+
+        const distance = calculateDistance(startPoint.lat, startPoint.lng, endPoint.lat, endPoint.lng);
+        totalDistance += distance;
+
+        const startTime = new Date(`1970-01-01T${startPoint.departureTime || startPoint.arrivalTime}`);
+        const endTime = new Date(`1970-01-01T${endPoint.arrivalTime || endPoint.departureTime}`);
+        totalTimeInSeconds += (endTime - startTime) / 1000;
+    }
+
+    // Calcular la distancia recorrida hasta la posición actual
+    let currentSegmentIndex = -1;
+    let distanceToCurrentPosition = 0;
+
+    for (let i = 0; i < points.length - 1; i++) {
+        const startPoint = points[i];
+        const endPoint = points[i + 1];
+
+        const segmentDistance = calculateDistance(startPoint.lat, startPoint.lng, endPoint.lat, endPoint.lng);
+        const userDistanceToStart = calculateDistance(userLatLng[0], userLatLng[1], startPoint.lat, startPoint.lng);
+        const userDistanceToEnd = calculateDistance(userLatLng[0], userLatLng[1], endPoint.lat, endPoint.lng);
+
+        if (userDistanceToStart + userDistanceToEnd <= segmentDistance + 20) { // Margen de 20 metros
+            currentSegmentIndex = i;
+            distanceToCurrentPosition += segmentDistance - userDistanceToEnd;
+            break;
+        } else {
+            distanceToCurrentPosition += segmentDistance;
+        }
+    }
+
+    if (currentSegmentIndex === -1) {
+        document.getElementById('time-difference').innerHTML = "No estás en el camino hacia ningún punto.";
+        return;
+    }
+
+    // Calcular el tiempo que debería haber transcurrido
+    const timePerMeter = totalTimeInSeconds / totalDistance;
+    const expectedTimeInSeconds = distanceToCurrentPosition * timePerMeter;
+
+    const currentTime = new Date();
+    const startTime = new Date(`1970-01-01T${points[0].departureTime || points[0].arrivalTime}`);
+    const expectedTime = new Date(startTime.getTime() + expectedTimeInSeconds * 1000);
+
+    const timeDifferenceInSeconds = Math.floor((expectedTime - currentTime) / 1000);
+    const sign = timeDifferenceInSeconds >= 0 ? '+' : '-';
+    const absoluteDifference = Math.abs(timeDifferenceInSeconds);
+
+    const minutes = Math.floor(absoluteDifference / 60);
+    const seconds = absoluteDifference % 60;
+
+    const formattedDifference = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    document.getElementById('time-difference').innerHTML = `Diferencia de tiempo: <span class="time-difference">${formattedDifference}</span>`;
 }
 
 // Calcular la distancia entre dos puntos usando la fórmula de Haversine
@@ -145,26 +183,10 @@ function toRadians(degrees) {
     return degrees * Math.PI / 180;
 }
 
-// Calcular la diferencia de tiempo con respecto a la hora de salida
-function calculateTimeDifferenceForDeparture(departureTime) {
-    const currentTime = new Date();
-    const departureDate = new Date(currentTime.toDateString() + ' ' + departureTime);
-
-    let timeDifference = Math.floor((departureDate - currentTime) / 1000); // Diferencia en segundos
-    let sign = timeDifference >= 0 ? '+' : '-';
-    timeDifference = Math.abs(timeDifference);
-
-    const minutes = Math.floor(timeDifference / 60);
-    const seconds = timeDifference % 60;
-
-    const formattedDifference = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    document.getElementById('time-difference').innerHTML = `Diferencia de tiempo: <span class="time-difference">${formattedDifference}</span>`;
-}
-
 // Botón "Iniciar Navegación"
 document.getElementById('start-navigation').addEventListener('click', function() {
-    if (points.length === 0) {
-        alert("No hay puntos para navegar.");
+    if (points.length < 2) {
+        alert("Se necesitan al menos 2 puntos para iniciar la navegación.");
         return;
     }
 
