@@ -11,34 +11,53 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
+            background-color: #121212;
+            color: #ffffff;
         }
         #map {
             height: 60vh;
             width: 100%;
         }
         #controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 10px;
-            background-color: #f4f4f4;
-            border-bottom: 1px solid #ccc;
+            background-color: #1e1e1e;
+            border-bottom: 1px solid #333;
+        }
+        #controls button {
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #controls button:hover {
+            background-color: #555;
         }
         #points-list {
             max-height: 200px;
             overflow-y: auto;
-            border: 1px solid #ccc;
+            border: 1px solid #333;
             padding: 10px;
             margin-top: 10px;
+            background-color: #1e1e1e;
         }
         .point-item {
             margin-bottom: 5px;
+            color: #ccc;
         }
         .time-difference {
             font-weight: bold;
-            color: red;
+            color: #ff5722;
         }
         #location-status {
             margin-top: 10px;
             font-size: 16px;
-            color: #333;
+            color: #ccc;
         }
     </style>
 </head>
