@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Navegación Asistida</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/css/ol.css" type="text/css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
     <style>
         body {
             margin: 0;
@@ -18,7 +18,7 @@
             justify-content: center;
             height: 100vh;
         }
-        #map {
+        #mapid {
             width: 80%;
             height: 600px;
             max-width: 1000px;
@@ -70,7 +70,7 @@
     </style>
 </head>
 <body>
-    <div id="map"></div>
+    <div id="mapid"></div>
     <div id="controls-container">
         <div id="controls">
             <button onclick="startAddingPoints()">Agregar Punto</button>
@@ -83,34 +83,22 @@
         <div id="timeDifference">Diferencia de Tiempo: 00:00</div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/build/ol.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
     <script>
         let map;
-        let pointSource;
+        let pointSource = L.featureGroup();
         let points = [];
         let currentPointIndex = 0;
         let watchingPosition = false;
         let positionWatchId;
 
         document.addEventListener('DOMContentLoaded', function() {
-            pointSource = new ol.source.Vector({});
-            const pointLayer = new ol.layer.Vector({
-                source: pointSource
-            });
+            map = L.map('mapid').setView([51.505, -0.09], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
 
-            map = new ol.Map({
-                target: 'map',
-                layers: [
-                    new ol.layer.Tile({
-                        source: new ol.source.OSM()
-                    }),
-                    pointLayer
-                ],
-                view: new ol.View({
-                    center: ol.proj.fromLonLat([-0.09, 51.505]),
-                    zoom: 13
-                })
-            });
+            map.addLayer(pointSource);
 
             // Start watching position
             watchPosition();
@@ -133,17 +121,12 @@
 
         function updatePosition(lat, lng) {
             // Update user's position on the map
-            const positionFeature = new ol.Feature({
-                geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat]))
-            });
-            positionFeature.setStyle(new ol.style.Style({
-                image: new ol.style.Circle({
-                    radius: 10,
-                    fill: new ol.style.Fill({ color: 'blue' }),
-                    stroke: new ol.style.Stroke({ color: 'white', width: 2 })
-                })
-            }));
-            pointSource.addFeature(positionFeature);
+            L.circle([lat, lng], {
+                color: 'blue',
+                fillColor: '#ccc',
+                fillOpacity: 0.5,
+                radius: 20
+            }).addTo(map);
 
             // Check if user is within 20 meters of current point
             if (currentPointIndex < points.length) {
@@ -176,17 +159,11 @@
         }
 
         function startAddingPoints() {
-            const draw = new ol.interaction.Draw({
-                source: pointSource,
-                type: 'Point'
-            });
-            map.addInteraction(draw);
-
-            draw.on('drawend', function(e) {
-                const coordinates = e.feature.getGeometry().getCoordinates();
-                const lonLat = ol.proj.toLonLat(coordinates);
+            const marker = L.marker(map.getCenter(), { draggable: true }).addTo(map);
+            marker.on('click', function() {
+                const latlng = marker.getLatLng();
                 const time = document.getElementById('pointTime').value;
-                points.push({ lat: lonLat[1], lng: lonLat[0], time: new Date(time) });
+                points.push({ lat: latlng.lat, lng: latlng.lng, time: new Date(time) });
                 updatePointsList();
             });
         }
