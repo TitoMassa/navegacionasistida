@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navegación Asistida</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            width: 100%;
+            height: 70vh;
+        }
+        .controls {
+            padding: 10px;
+        }
+        input[type="datetime-local"] {
+            margin-right: 10px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="controls">
+        <label for="start-time">Hora de salida:</label>
+        <input type="datetime-local" id="start-time">
+        <label for="end-time">Hora de llegada:</label>
+        <input type="datetime-local" id="end-time">
+        <button onclick="calculateTimeDifference()">Calcular Diferencia de Tiempo</button>
+        <p id="time-difference"></p>
+    </div>
+
+    <script>
+        let map, markerStart, markerEnd, userLocation;
+
+        function initMap() {
+            map = L.map('map').setView([51.505, -0.09], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(showPosition, showError);
+            } else {
+                alert("Geolocalización no es compatible con este navegador.");
+            }
+
+            map.on('click', onMapClick);
+        }
+
+        function showPosition(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            userLocation = [lat, lon];
+            if (!markerStart) {
+                markerStart = L.marker([lat, lon]).addTo(map)
+                    .bindPopup('Punto de inicio')
+                    .openPopup();
+            } else {
+                map.removeLayer(markerStart);
+                markerStart = L.marker([lat, lon]).addTo(map)
+                    .bindPopup('Punto de inicio')
+                    .openPopup();
+            }
+        }
+
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Usuario denegó la solicitud de Geolocalización.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("La ubicación no está disponible.");
+                    break;
+                case error.TIMEOUT:
+                    alert("La solicitud de Geolocalización ha expirado.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Un error desconocido ocurrió.");
+                    break;
+            }
+        }
+
+        function onMapClick(e) {
+            if (!markerEnd) {
+                markerEnd = L.marker(e.latlng).addTo(map)
+                    .bindPopup('Punto de destino')
+                    .openPopup();
+            } else {
+                map.removeLayer(markerEnd);
+                markerEnd = L.marker(e.latlng).addTo(map)
+                    .bindPopup('Punto de destino')
+                    .openPopup();
+            }
+        }
+
+        function calculateTimeDifference() {
+            const startTime = document.getElementById('start-time').value;
+            const endTime = document.getElementById('end-time').value;
+
+            if (!startTime || !endTime || !userLocation || !markerEnd) {
+                alert("Por favor, seleccione ambas fechas y horas, y defina ambos puntos (inicio y destino).");
+                return;
+            }
+
+            const startMoment = moment(startTime);
+            const endMoment = moment(endTime);
+            const currentMoment = moment();
+
+            const totalDuration = moment.duration(endMoment.diff(startMoment)).asSeconds();
+            const elapsedTime = moment.duration(currentMoment.diff(startMoment)).asSeconds();
+
+            const distanceToDestination = map.distance(userLocation, markerEnd.getLatLng()) / 1000; // Distancia en km
+            const totalDistance = map.distance(markerStart.getLatLng(), markerEnd.getLatLng()) / 1000; // Distancia total en km
+
+            const expectedElapsedTime = (elapsedTime / totalDistance) * distanceToDestination;
+
+            const expectedTimeAtCurrentLocation = startMoment.clone().add(expectedElapsedTime, 'seconds');
+            const timeDifference = moment.duration(currentMoment.diff(expectedTimeAtCurrentLocation));
+
+            const formattedDuration = timeDifference.asSeconds() > 0 ? `+${timeDifference.minutes()}:${String(timeDifference.seconds()).padStart(2, '0')}` : `-${Math.abs(timeDifference.minutes())}:${String(Math.abs(timeDifference.seconds())).padStart(2, '0')}`;
+
+            document.getElementById('time-difference').innerText = `Diferencia de tiempo: ${formattedDuration}`;
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
