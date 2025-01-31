@@ -7,17 +7,26 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 let userMarker = null; // Marcador de la ubicación del usuario
 let points = []; // Array para almacenar los puntos agregados
 let currentPointIndex = 0; // Índice del punto actual en la navegación
+const pointRadius = 20; // Radio de 20 metros alrededor de cada punto
 
-// Obtener la ubicación actual del usuario
+// Obtener la ubicación actual del usuario en tiempo real
 function getUserLocation() {
     if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
+        navigator.geolocation.watchPosition(position => {
             const { latitude, longitude } = position.coords;
-            map.setView([latitude, longitude], 15);
-            if (userMarker) {
-                map.removeLayer(userMarker);
+            const userLatLng = [latitude, longitude];
+
+            // Si no existe un marcador de usuario, lo creamos
+            if (!userMarker) {
+                userMarker = L.marker(userLatLng).addTo(map).bindPopup("Tu ubicación").openPopup();
+            } else {
+                userMarker.setLatLng(userLatLng); // Actualizar la posición del marcador
             }
-            userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación").openPopup();
+
+            map.setView(userLatLng, 15); // Centrar el mapa en la ubicación actual
+
+            // Verificar si el usuario está dentro del radio de algún punto
+            checkIfUserIsInsidePoint(userLatLng);
         }, error => {
             console.error("Error al obtener la ubicación:", error);
         });
@@ -50,7 +59,7 @@ map.on('click', function(e) {
 
 // Agregar un punto al mapa y a la lista
 function addPointToMapAndList(point) {
-    const marker = L.marker([point.lat, point.lng]).addTo(map).bindPopup(`Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`);
+    const marker = L.circleMarker([point.lat, point.lng], { radius: 5, color: 'blue' }).addTo(map).bindPopup(`Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`);
     updatePointsList();
 }
 
@@ -72,44 +81,66 @@ document.getElementById('remove-point').addEventListener('click', function() {
         points.pop(); // Eliminar el último punto del array
         updatePointsList();
         map.eachLayer(layer => {
-            if (layer instanceof L.Marker && layer !== userMarker) {
+            if (layer instanceof L.CircleMarker) {
                 map.removeLayer(layer);
             }
         });
         points.forEach(point => {
-            L.marker([point.lat, point.lng]).addTo(map);
+            L.circleMarker([point.lat, point.lng], { radius: 5, color: 'blue' }).addTo(map);
         });
     } else {
         alert("No hay puntos para eliminar.");
     }
 });
 
-// Iniciar la navegación
-document.getElementById('start-navigation').addEventListener('click', function() {
-    if (points.length === 0) {
-        alert("No hay puntos para navegar.");
-        return;
-    }
+// Verificar si el usuario está dentro del radio de algún punto
+function checkIfUserIsInsidePoint(userLatLng) {
+    const userLat = userLatLng[0];
+    const userLng = userLatLng[1];
 
-    currentPointIndex = 0;
-    updateNavigation();
-});
+    points.forEach((point, index) => {
+        const pointLatLng = [point.lat, point.lng];
+        const distance = calculateDistance(userLat, userLng, point.lat, point.lng);
 
-// Actualizar la navegación y calcular la diferencia de tiempo
-function updateNavigation() {
+        if (distance <= pointRadius) {
+            // El usuario está dentro del radio del punto
+            alert(`¡Estás dentro del radio del Punto ${index + 1}!`);
+            adjustTimeBasedOnDeparture(point.departureTime);
+        }
+    });
+}
+
+// Calcular la distancia entre dos puntos usando la fórmula de Haversine
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Radio de la Tierra en metros
+    const φ1 = toRadians(lat1);
+    const φ2 = toRadians(lat2);
+    const Δφ = toRadians(lat2 - lat1);
+    const Δλ = toRadians(lon2 - lon1);
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distancia en metros
+}
+
+// Convertir grados a radianes
+function toRadians(degrees) {
+    return degrees * Math.PI / 180;
+}
+
+// Ajustar el horario según el horario de salida del punto
+function adjustTimeBasedOnDeparture(departureTime) {
     const currentTime = new Date();
-    const currentPoint = points[currentPointIndex];
-    const arrivalTime = new Date(currentTime.toDateString() + ' ' + currentPoint.arrivalTime);
+    const departureDate = new Date(currentTime.toDateString() + ' ' + departureTime);
 
-    let timeDifference = Math.floor((arrivalTime - currentTime) / 1000); // Diferencia en segundos
-    let sign = timeDifference >= 0 ? '+' : '-';
-    timeDifference = Math.abs(timeDifference);
-
-    const minutes = Math.floor(timeDifference / 60);
-    const seconds = timeDifference % 60;
-
-    const formattedDifference = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    document.getElementById('time-difference').innerHTML = `Diferencia de tiempo: <span class="time-difference">${formattedDifference}</span>`;
+    if (currentTime < departureDate) {
+        alert(`Aún no es hora de salir. La salida está programada para ${departureTime}`);
+    } else {
+        alert(`Es hora de salir. ¡Adelante!`);
+    }
 }
 
 // Función para agregar puntos manualmente
@@ -137,6 +168,3 @@ document.getElementById('add-point').addEventListener('click', function() {
 
 // Inicializar la ubicación del usuario al cargar la página
 getUserLocation();
-
-// Actualizar la diferencia de tiempo cada segundo
-setInterval(updateNavigation, 1000);
