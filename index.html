@@ -46,6 +46,13 @@
             display: flex;
             flex-direction: column;
         }
+        #points-list {
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            width: 100%;
+            margin-top: 10px;
+        }
         #timeDifference {
             background: rgba(0,0,0,0.5);
             padding: 10px;
@@ -74,6 +81,7 @@
             <button onclick="loadRoute()">Cargar Ruta Guardada</button>
             <input type="datetime-local" id="pointTime" placeholder="Hora">
         </div>
+        <div id="points-list">Puntos:</div>
         <div id="timeDifference">Diferencia de Tiempo: 00:00</div>
     </div>
 
@@ -187,7 +195,18 @@
             const centerLonLat = ol.proj.toLonLat(viewCenter);
             const time = document.getElementById('pointTime').value;
             points.push({ lat: centerLonLat[1], lng: centerLonLat[0], time: new Date(time) });
+            updatePointsList();
             updateRouting();
+        }
+
+        function updatePointsList() {
+            const pointsList = document.getElementById('points-list');
+            pointsList.innerHTML = 'Puntos:';
+            points.forEach((point, index) => {
+                const pointDiv = document.createElement('div');
+                pointDiv.innerHTML = `Punto ${index + 1}: Lat ${point.lat}, Lng ${point.lng}, Time ${point.time}`;
+                pointsList.appendChild(pointDiv);
+            });
         }
 
         function editPoint() {
