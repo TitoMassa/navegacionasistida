@@ -60,7 +60,7 @@ map.on('click', function(e) {
 
 // Agregar un punto al mapa y a la lista
 function addPointToMapAndList(point) {
-    const marker = L.circleMarker([point.lat, point.lng], { radius: 5, color: 'blue' }).addTo(map).bindPopup(`Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`);
+    const marker = L.circleMarker([point.lat, point.lng], { radius: 5, color: '#ff5722' }).addTo(map).bindPopup(`Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`);
     updatePointsList();
 }
 
@@ -87,7 +87,7 @@ document.getElementById('remove-point').addEventListener('click', function() {
             }
         });
         points.forEach(point => {
-            L.circleMarker([point.lat, point.lng], { radius: 5, color: 'blue' }).addTo(map);
+            L.circleMarker([point.lat, point.lng], { radius: 5, color: '#ff5722' }).addTo(map);
         });
     } else {
         alert("No hay puntos para eliminar.");
