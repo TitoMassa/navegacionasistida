@@ -5,7 +5,122 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        /* ... (CSS remains the same as in the previous full code) ... */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-weight: lighter;
+        }
+        #map {
+            width: 90%;
+            max-width: 800px;
+            height: 400px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        #controls {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            width: 90%;
+            max-width: 800px;
+            background-color: #1e1e1e;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        #controls label, #controls input, #controls button {
+            margin-bottom: 15px;
+            color: #f0f0f0;
+            font-weight: lighter;
+        }
+        #controls input[type="time"] {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        #controls button {
+            background-color: #00a0e9;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        #controls button:hover {
+            background-color: #007bb5;
+        }
+        #timeDifference {
+            font-size: 3.5em;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+        .time-delayed { color: #ff4d4d; }
+        .time-ontime { color: #66bb6a; }
+        .time-advanced { color: #4fc3f7; }
+
+        #arrivalBox {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 90%;
+            max-width: 800px;
+            background-color: #1e1e1e;
+            border-radius: 12px;
+            padding: 15px 25px;
+            box-sizing: border-box;
+            margin-bottom: 30px;
+        }
+        #arrivalBoxLabel {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #f0f0f0;
+        }
+        #arrivalTimeCountdown {
+            font-size: 2em;
+            font-weight: bold;
+            color: white;
+            min-width: 80px;
+            text-align: right;
+        }
+        .leaflet-marker-icon.start { filter: hue-rotate(120deg); } /* Greenish for start */
+        .leaflet-marker-icon.intermediate { filter: hue-rotate(30deg); } /* Yellowish for intermediate */
+        .leaflet-marker-icon.destination { filter: hue-rotate(330deg); } /* Reddish for destination */
+        .radius-circle {
+            fill: blue;
+            fill-opacity: 0.2;
+            stroke: none;
+        }
+        .intermediate-point-input-group {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 6px;
+            background-color: #2a2a2a; /* Slightly different background for input groups */
+        }
+        .intermediate-point-input-group label {
+            display: block; /* Labels on their own line */
+            margin-bottom: 5px;
+        }
+
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -61,7 +176,7 @@
         var userLocation = null;
         var timeDifferenceValue = 0;
         var pointCreationMode = 'start';
-        var intermediatePointCounter = 0; // Counter for intermediate points
+        var intermediatePointCounter = 0;
 
         function updateTimeDifference() {
             if (!navigationActive || points.length === 0 || userLocation === null) return;
@@ -359,7 +474,7 @@
             var arrivalInput = document.createElement('input');
             arrivalInput.setAttribute('type', 'time');
             arrivalInput.setAttribute('id', `intermediateArrivalTime${intermediatePointCounter - 1}`);
-            arrivalInput.value = "14:15"; // Default time, you can adjust
+            arrivalInput.value = "14:15";
 
             var departureLabel = document.createElement('label');
             departureLabel.setAttribute('for', `intermediateDepartureTime${intermediatePointCounter - 1}`);
@@ -367,7 +482,7 @@
             var departureInput = document.createElement('input');
             departureInput.setAttribute('type', 'time');
             departureInput.setAttribute('id', `intermediateDepartureTime${intermediatePointCounter - 1}`);
-            departureInput.value = "14:30"; // Default time, you can adjust
+            departureInput.value = "14:30";
 
 
             container.appendChild(arrivalLabel);
