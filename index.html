@@ -8,7 +8,9 @@
         body {
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
+            background-color: #000;
+            color: #fff;
         }
         #map {
             width: 100%;
@@ -16,9 +18,47 @@
         }
         .controls {
             padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
         input[type="datetime-local"] {
-            margin-right: 10px;
+            margin: 5px 0;
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #111;
+            color: #fff;
+        }
+        button {
+            margin: 10px 0;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007BFF;
+            color: #fff;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #time-difference {
+            margin-top: 20px;
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+        }
+        #time-difference.red {
+            color: red;
+        }
+        #time-difference.green {
+            color: green;
+        }
+        #time-difference.blue {
+            color: blue;
         }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
@@ -28,9 +68,9 @@
 <body>
     <div id="map"></div>
     <div class="controls">
-        <label for="start-time">Hora de salida:</label>
+        <label for="start-time" style="font-size: 18px;">Hora de salida:</label>
         <input type="datetime-local" id="start-time">
-        <label for="end-time">Hora de llegada:</label>
+        <label for="end-time" style="font-size: 18px;">Hora de llegada:</label>
         <input type="datetime-local" id="end-time">
         <button onclick="calculateTimeDifference()">Calcular Diferencia de Tiempo</button>
         <p id="time-difference"></p>
@@ -68,6 +108,7 @@
                     .bindPopup('Punto de inicio')
                     .openPopup();
             }
+            map.setView([lat, lon], 13);
         }
 
         function showError(error) {
@@ -126,7 +167,16 @@
 
             const formattedDuration = timeDifference.asSeconds() > 0 ? `+${timeDifference.minutes()}:${String(timeDifference.seconds()).padStart(2, '0')}` : `-${Math.abs(timeDifference.minutes())}:${String(Math.abs(timeDifference.seconds())).padStart(2, '0')}`;
 
-            document.getElementById('time-difference').innerText = `Diferencia de tiempo: ${formattedDuration}`;
+            const timeDifferenceElement = document.getElementById('time-difference');
+            timeDifferenceElement.innerText = `Diferencia de tiempo: ${formattedDuration}`;
+
+            if (timeDifference.asSeconds() < -120) { // -02:00
+                timeDifferenceElement.className = 'red';
+            } else if (timeDifference.asSeconds() >= -120 && timeDifference.asSeconds() <= 120) { // -01:59 a +01:59
+                timeDifferenceElement.className = 'green';
+            } else if (timeDifference.asSeconds() > 120) { // +02:00
+                timeDifferenceElement.className = 'blue';
+            }
         }
 
         window.onload = initMap;
