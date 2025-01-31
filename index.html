@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Navegación Asistida</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/css/ol.css" type="text/css">
     <style>
         body {
             margin: 0;
@@ -20,7 +18,7 @@
             justify-content: center;
             height: 100vh;
         }
-        #mapid {
+        #map {
             width: 80%;
             height: 600px;
             max-width: 1000px;
@@ -65,7 +63,7 @@
     </style>
 </head>
 <body>
-    <div id="mapid"></div>
+    <div id="map"></div>
     <div id="controls-container">
         <div id="controls">
             <button onclick="startDrawing()">Dibujar Ruta</button>
@@ -79,56 +77,46 @@
         <div id="timeDifference">Diferencia de Tiempo: 00:00</div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
-    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/build/ol.js"></script>
     <script>
         let map;
-        let drawnItems;
-        let routingControl;
+        let draw;
+        let source;
         let points = [];
         let currentPointIndex = 0;
         let watchingPosition = false;
         let positionWatchId;
 
         document.addEventListener('DOMContentLoaded', function() {
-            map = L.map('mapid').setView([51.505, -0.09], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            // Initialize drawing control
-            drawnItems = new L.FeatureGroup();
-            map.addLayer(drawnItems);
-            const drawControl = new L.Control.Draw({
-                edit: {
-                    featureGroup: drawnItems
-                },
-                draw: {
-                    polyline: true,
-                    rectangle: false,
-                    circle: false,
-                    marker: false
-                }
+            source = new ol.source.Vector({});
+            const vector = new ol.layer.Vector({
+                source: source
             });
-            map.addControl(drawControl);
 
-            // Initialize routing control
-            routingControl = L.Routing.control({
-                waypoints: [],
-                routeWhileDragging: false,
-                fitSelectedRoutes: false,
-                createMarker: function() { return null; } // Disable default markers
-            }).addTo(map);
+            map = new ol.Map({
+                target: 'map',
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.OSM()
+                    }),
+                    vector
+                ],
+                view: new ol.View({
+                    center: ol.proj.fromLonLat([-0.09, 51.505]),
+                    zoom: 13
+                })
+            });
 
-            // Event listener for drawing
-            map.on('draw:created', function(e) {
-                const type = e.layerType;
-                const layer = e.layer;
-                drawnItems.addLayer(layer);
-                if (type === 'polyline') {
-                    saveRoute(layer);
-                }
+            // Initialize drawing interaction
+            draw = new ol.interaction.Draw({
+                source: source,
+                type: 'LineString'
+            });
+            map.addInteraction(draw);
+
+            // Event listener for drawing end
+            draw.on('drawend', function(e) {
+                saveRoute(e.feature);
             });
 
             // Start watching position
@@ -152,12 +140,17 @@
 
         function updatePosition(lat, lng) {
             // Update user's position on the map
-            L.circle([lat, lng], {
-                color: 'blue',
-                fillColor: '#ccc',
-                fillOpacity: 0.5,
-                radius: 20
-            }).addTo(map);
+            const positionFeature = new ol.Feature({
+                geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat]))
+            });
+            positionFeature.setStyle(new ol.style.Style({
+                image: new ol.style.Circle({
+                    radius: 10,
+                    fill: new ol.style.Fill({ color: 'blue' }),
+                    stroke: new ol.style.Stroke({ color: 'white', width: 2 })
+                })
+            }));
+            source.addFeature(positionFeature);
 
             // Check if user is within 20 meters of current point
             if (currentPointIndex < points.length) {
@@ -190,10 +183,11 @@
         }
 
         function addPoint() {
-            const latlng = map.getCenter();
+            const viewCenter = map.getView().getCenter();
+            const centerLonLat = ol.proj.toLonLat(viewCenter);
             const time = document.getElementById('pointTime').value;
-            points.push({ lat: latlng.lat, lng: latlng.lng, time: new Date(time) });
-            updateRoutingControl();
+            points.push({ lat: centerLonLat[1], lng: centerLonLat[0], time: new Date(time) });
+            updateRouting();
         }
 
         function editPoint() {
@@ -204,49 +198,13 @@
             // Implement point deletion logic
         }
 
-        function updateRoutingControl() {
-            const waypoints = points.map(point => L.latLng(point.lat, point.lng));
-            routingControl.setWaypoints(waypoints);
+        function updateRouting() {
+            // Update routing based on points
+            // This is a placeholder for routing logic
         }
 
-        function calculateTimeDifference(lat, lng) {
-            if (currentPointIndex >= points.length) {
-                document.getElementById('timeDifference').innerText = 'Diferencia de Tiempo: Llegada';
-                return;
-            }
-
-            const point = points[currentPointIndex];
-            const targetTime = point.time;
-            const currentTime = new Date();
-            const timeDiff = targetTime - currentTime;
-
-            let diffStr;
-            if (timeDiff > 0) {
-                const minutes = Math.floor(timeDiff / 60000);
-                const seconds = Math.floor((timeDiff % 60000) / 1000);
-                diffStr = `+${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            } else {
-                const minutes = Math.floor(-timeDiff / 60000);
-                const seconds = Math.floor((-timeDiff % 60000) / 1000);
-                diffStr = `-${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
-
-            document.getElementById('timeDifference').innerText = `Diferencia de Tiempo: ${diffStr}`;
-        }
-
-        function startDrawing() {
-            map.on('draw:created', function(e) {
-                const type = e.layerType;
-                const layer = e.layer;
-                drawnItems.addLayer(layer);
-                if (type === 'polyline') {
-                    saveRoute(layer);
-                }
-            });
-        }
-
-        function saveRoute(layer) {
-            const route = layer.toGeoJSON();
+        function saveRoute(feature) {
+            const route = feature.getGeometry().getCoordinates();
             localStorage.setItem('savedRoute', JSON.stringify(route));
         }
 
@@ -254,12 +212,12 @@
             const savedRoute = localStorage.getItem('savedRoute');
             if (savedRoute) {
                 const route = JSON.parse(savedRoute);
-                const polyline = L.geoJSON(route);
-                map.addLayer(polyline);
-                // Update routing control with the loaded route
-                const coordinates = route.geometry.coordinates;
-                const waypoints = coordinates.map(coord => L.latLng(coord[1], coord[0]));
-                routingControl.setWaypoints(waypoints);
+                const feature = new ol.Feature({
+                    geometry: new ol.geom.LineString(route)
+                });
+                source.addFeature(feature);
+                // Update routing based on the loaded route
+                updateRouting();
             }
         }
 
