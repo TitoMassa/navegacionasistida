@@ -115,12 +115,14 @@
                 const arrivalTime = prompt('Ingrese la hora de llegada (formato YYYY-MM-DDTHH:MM):');
                 const departureTime = prompt('Ingrese la hora de salida (formato YYYY-MM-DDTHH:MM):');
                 if (arrivalTime && departureTime) {
-                    points.push({ 
+                    const point = { 
                         lat: latlng.lat, 
                         lng: latlng.lng, 
                         arrivalTime: new Date(arrivalTime), 
-                        departureTime: new Date(departureTime) 
-                    });
+                        departureTime: new Date(departureTime), 
+                        marker: L.marker([latlng.lat, latlng.lng]).addTo(map)
+                    };
+                    points.push(point);
                     updatePointsList();
                 }
             });
@@ -194,7 +196,8 @@
 
         function deletePoint() {
             if (points.length > 0) {
-                points.pop();
+                const lastPoint = points.pop();
+                map.removeLayer(lastPoint.marker);
                 updatePointsList();
             }
         }
