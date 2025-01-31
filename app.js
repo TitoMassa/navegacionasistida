@@ -40,15 +40,13 @@ map.on('click', function(e) {
     const lat = e.latlng.lat.toFixed(6);
     const lng = e.latlng.lng.toFixed(6);
 
-    // Solicitar al usuario las horas de llegada y salida
-    const arrivalTime = prompt("Ingrese la hora de llegada (HH:mm):");
+    // Solicitar al usuario la hora de salida
     const departureTime = prompt("Ingrese la hora de salida (HH:mm):");
 
-    if (arrivalTime && departureTime) {
+    if (departureTime) {
         const point = {
             lat,
             lng,
-            arrivalTime,
             departureTime
         };
 
@@ -59,7 +57,7 @@ map.on('click', function(e) {
 
 // Agregar un punto al mapa y a la lista
 function addPointToMapAndList(point) {
-    const marker = L.circleMarker([point.lat, point.lng], { radius: 5, color: 'blue' }).addTo(map).bindPopup(`Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`);
+    const marker = L.circleMarker([point.lat, point.lng], { radius: 5, color: 'blue' }).addTo(map).bindPopup(`Salida: ${point.departureTime}`);
     updatePointsList();
 }
 
@@ -70,7 +68,7 @@ function updatePointsList() {
     points.forEach((point, index) => {
         const item = document.createElement('div');
         item.className = 'point-item';
-        item.innerHTML = `Punto ${index + 1}: Lat: ${point.lat}, Lng: ${point.lng}, Llegada: ${point.arrivalTime}, Salida: ${point.departureTime}`;
+        item.innerHTML = `Punto ${index + 1}: Lat: ${point.lat}, Lng: ${point.lng}, Salida: ${point.departureTime}`;
         list.appendChild(item);
     });
 }
@@ -105,7 +103,7 @@ function checkIfUserIsInsidePoint(userLatLng) {
         if (distance <= pointRadius) {
             // El usuario está dentro del radio del punto
             alert(`¡Estás dentro del radio del Punto ${index + 1}!`);
-            adjustTimeBasedOnDeparture(point.departureTime);
+            calculateTimeDifferenceForDeparture(point.departureTime);
         }
     });
 }
@@ -131,40 +129,21 @@ function toRadians(degrees) {
     return degrees * Math.PI / 180;
 }
 
-// Ajustar el horario según el horario de salida del punto
-function adjustTimeBasedOnDeparture(departureTime) {
+// Calcular la diferencia de tiempo con respecto a la hora de salida
+function calculateTimeDifferenceForDeparture(departureTime) {
     const currentTime = new Date();
     const departureDate = new Date(currentTime.toDateString() + ' ' + departureTime);
 
-    if (currentTime < departureDate) {
-        alert(`Aún no es hora de salir. La salida está programada para ${departureTime}`);
-    } else {
-        alert(`Es hora de salir. ¡Adelante!`);
-    }
+    let timeDifference = Math.floor((departureDate - currentTime) / 1000); // Diferencia en segundos
+    let sign = timeDifference >= 0 ? '+' : '-';
+    timeDifference = Math.abs(timeDifference);
+
+    const minutes = Math.floor(timeDifference / 60);
+    const seconds = timeDifference % 60;
+
+    const formattedDifference = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    document.getElementById('time-difference').innerHTML = `Diferencia de tiempo: <span class="time-difference">${formattedDifference}</span>`;
 }
-
-// Función para agregar puntos manualmente
-document.getElementById('add-point').addEventListener('click', function() {
-    map.once('click', function(e) {
-        const lat = e.latlng.lat.toFixed(6);
-        const lng = e.latlng.lng.toFixed(6);
-
-        const arrivalTime = prompt("Ingrese la hora de llegada (HH:mm):");
-        const departureTime = prompt("Ingrese la hora de salida (HH:mm):");
-
-        if (arrivalTime && departureTime) {
-            const point = {
-                lat,
-                lng,
-                arrivalTime,
-                departureTime
-            };
-
-            points.push(point);
-            addPointToMapAndList(point);
-        }
-    });
-});
 
 // Inicializar la ubicación del usuario al cargar la página
 getUserLocation();
