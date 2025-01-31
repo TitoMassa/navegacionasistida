@@ -73,12 +73,10 @@
     <div id="map"></div>
     <div id="controls-container">
         <div id="controls">
-            <button onclick="startDrawing()">Dibujar Ruta</button>
-            <button onclick="addPoint()">Agregar Punto</button>
+            <button onclick="startAddingPoints()">Agregar Punto</button>
             <button onclick="editPoint()">Editar Punto</button>
             <button onclick="deletePoint()">Eliminar Punto</button>
             <button onclick="startNavigation()">Iniciar Navegación</button>
-            <button onclick="loadRoute()">Cargar Ruta Guardada</button>
             <input type="datetime-local" id="pointTime" placeholder="Hora">
         </div>
         <div id="points-list">Puntos:</div>
@@ -88,17 +86,16 @@
     <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/build/ol.js"></script>
     <script>
         let map;
-        let draw;
-        let source;
+        let pointSource;
         let points = [];
         let currentPointIndex = 0;
         let watchingPosition = false;
         let positionWatchId;
 
         document.addEventListener('DOMContentLoaded', function() {
-            source = new ol.source.Vector({});
-            const vector = new ol.layer.Vector({
-                source: source
+            pointSource = new ol.source.Vector({});
+            const pointLayer = new ol.layer.Vector({
+                source: pointSource
             });
 
             map = new ol.Map({
@@ -107,24 +104,12 @@
                     new ol.layer.Tile({
                         source: new ol.source.OSM()
                     }),
-                    vector
+                    pointLayer
                 ],
                 view: new ol.View({
                     center: ol.proj.fromLonLat([-0.09, 51.505]),
                     zoom: 13
                 })
-            });
-
-            // Initialize drawing interaction
-            draw = new ol.interaction.Draw({
-                source: source,
-                type: 'LineString'
-            });
-            map.addInteraction(draw);
-
-            // Event listener for drawing end
-            draw.on('drawend', function(e) {
-                saveRoute(e.feature);
             });
 
             // Start watching position
@@ -158,7 +143,7 @@
                     stroke: new ol.style.Stroke({ color: 'white', width: 2 })
                 })
             }));
-            source.addFeature(positionFeature);
+            pointSource.addFeature(positionFeature);
 
             // Check if user is within 20 meters of current point
             if (currentPointIndex < points.length) {
@@ -190,13 +175,20 @@
             return d;
         }
 
-        function addPoint() {
-            const viewCenter = map.getView().getCenter();
-            const centerLonLat = ol.proj.toLonLat(viewCenter);
-            const time = document.getElementById('pointTime').value;
-            points.push({ lat: centerLonLat[1], lng: centerLonLat[0], time: new Date(time) });
-            updatePointsList();
-            updateRouting();
+        function startAddingPoints() {
+            const draw = new ol.interaction.Draw({
+                source: pointSource,
+                type: 'Point'
+            });
+            map.addInteraction(draw);
+
+            draw.on('drawend', function(e) {
+                const coordinates = e.feature.getGeometry().getCoordinates();
+                const lonLat = ol.proj.toLonLat(coordinates);
+                const time = document.getElementById('pointTime').value;
+                points.push({ lat: lonLat[1], lng: lonLat[0], time: new Date(time) });
+                updatePointsList();
+            });
         }
 
         function updatePointsList() {
@@ -217,27 +209,29 @@
             // Implement point deletion logic
         }
 
-        function updateRouting() {
-            // Update routing based on points
-            // This is a placeholder for routing logic
-        }
-
-        function saveRoute(feature) {
-            const route = feature.getGeometry().getCoordinates();
-            localStorage.setItem('savedRoute', JSON.stringify(route));
-        }
-
-        function loadRoute() {
-            const savedRoute = localStorage.getItem('savedRoute');
-            if (savedRoute) {
-                const route = JSON.parse(savedRoute);
-                const feature = new ol.Feature({
-                    geometry: new ol.geom.LineString(route)
-                });
-                source.addFeature(feature);
-                // Update routing based on the loaded route
-                updateRouting();
+        function calculateTimeDifference(lat, lng) {
+            if (currentPointIndex >= points.length) {
+                document.getElementById('timeDifference').innerText = 'Diferencia de Tiempo: Llegada';
+                return;
             }
+
+            const point = points[currentPointIndex];
+            const targetTime = point.time;
+            const currentTime = new Date();
+            const timeDiff = targetTime - currentTime;
+
+            let diffStr;
+            if (timeDiff > 0) {
+                const minutes = Math.floor(timeDiff / 60000);
+                const seconds = Math.floor((timeDiff % 60000) / 1000);
+                diffStr = `+${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                const minutes = Math.floor(-timeDiff / 60000);
+                const seconds = Math.floor((-timeDiff % 60000) / 1000);
+                diffStr = `-${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            document.getElementById('timeDifference').innerText = `Diferencia de Tiempo: ${diffStr}`;
         }
 
         function startNavigation() {
