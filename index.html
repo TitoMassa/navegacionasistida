@@ -73,8 +73,6 @@
     <div id="mapid"></div>
     <div id="controls-container">
         <div id="controls">
-            <button onclick="startAddingPoints()">Agregar Punto</button>
-            <button onclick="editPoint()">Editar Punto</button>
             <button onclick="deletePoint()">Eliminar Punto</button>
             <button onclick="startNavigation()">Iniciar Navegación</button>
             <input type="datetime-local" id="pointTimeArrival" placeholder="Hora de Llegada">
@@ -118,6 +116,22 @@
                 }).addTo(map);
             }, function(error) {
                 console.error('Error al obtener la ubicación:', error);
+            });
+
+            // Add point on map click
+            map.on('click', function(e) {
+                const latlng = e.latlng;
+                const arrivalTime = prompt('Ingrese la hora de llegada (formato YYYY-MM-DDTHH:MM):');
+                const departureTime = prompt('Ingrese la hora de salida (formato YYYY-MM-DDTHH:MM):');
+                if (arrivalTime && departureTime) {
+                    points.push({ 
+                        lat: latlng.lat, 
+                        lng: latlng.lng, 
+                        arrivalTime: new Date(arrivalTime), 
+                        departureTime: new Date(departureTime) 
+                    });
+                    updatePointsList();
+                }
             });
 
             // Start watching position
@@ -181,22 +195,6 @@
             return d;
         }
 
-        function startAddingPoints() {
-            const marker = L.marker(map.getCenter(), { draggable: true }).addTo(map);
-            marker.on('click', function() {
-                const latlng = marker.getLatLng();
-                const arrivalTime = document.getElementById('pointTimeArrival').value;
-                const departureTime = document.getElementById('pointTimeDeparture').value;
-                points.push({ 
-                    lat: latlng.lat, 
-                    lng: latlng.lng, 
-                    arrivalTime: new Date(arrivalTime), 
-                    departureTime: new Date(departureTime) 
-                });
-                updatePointsList();
-            });
-        }
-
         function updatePointsList() {
             const pointsList = document.getElementById('points-list');
             pointsList.innerHTML = 'Puntos:';
@@ -207,12 +205,11 @@
             });
         }
 
-        function editPoint() {
-            // Implement point editing logic
-        }
-
         function deletePoint() {
-            // Implement point deletion logic
+            if (points.length > 0) {
+                points.pop();
+                updatePointsList();
+            }
         }
 
         function calculateTimeDifference(lat, lng) {
