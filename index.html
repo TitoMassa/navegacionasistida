@@ -13,23 +13,26 @@
             font-family: 'Arial', sans-serif;
             background-color: #121212;
             color: #fff;
+            display: flex;
         }
         #mapid {
-            width: 100%;
+            width: 70%;
             height: 100vh;
         }
+        #controls-container {
+            width: 30%;
+            padding: 20px;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
         #controls {
-            position: absolute;
-            top: 10px;
-            left: 10px;
             background: rgba(0,0,0,0.5);
             padding: 10px;
             border-radius: 5px;
         }
         #timeDifference {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
             background: rgba(0,0,0,0.5);
             padding: 10px;
             border-radius: 5px;
@@ -43,13 +46,15 @@
 </head>
 <body>
     <div id="mapid"></div>
-    <div id="controls">
-        <button onclick="addPoint()">Agregar Punto</button>
-        <button onclick="editPoint()">Editar Punto</button>
-        <button onclick="deletePoint()">Eliminar Punto</button>
-        <input type="datetime-local" id="pointTime" placeholder="Hora">
+    <div id="controls-container">
+        <div id="controls">
+            <button onclick="addPoint()">Agregar Punto</button>
+            <button onclick="editPoint()">Editar Punto</button>
+            <button onclick="deletePoint()">Eliminar Punto</button>
+            <input type="datetime-local" id="pointTime" placeholder="Hora">
+        </div>
+        <div id="timeDifference">Diferencia de Tiempo: 00:00</div>
     </div>
-    <div id="timeDifference">Diferencia de Tiempo: 00:00</div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
