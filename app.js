@@ -6,8 +6,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let userMarker = null; // Marcador de la ubicación del usuario
 let points = []; // Array para almacenar los puntos agregados
-let currentPointIndex = 0; // Índice del punto actual en la navegación
+let currentPointIndex = -1; // Índice del punto actual (-1 significa que no está en ningún punto)
 const pointRadius = 20; // Radio de 20 metros alrededor de cada punto
+let isNavigationActive = false; // Indica si la navegación está activa
 
 // Obtener la ubicación actual del usuario en tiempo real
 function getUserLocation() {
@@ -26,7 +27,9 @@ function getUserLocation() {
             map.setView(userLatLng, 15); // Centrar el mapa en la ubicación actual
 
             // Verificar si el usuario está dentro del radio de algún punto
-            checkIfUserIsInsidePoint(userLatLng);
+            if (isNavigationActive) {
+                checkIfUserIsInsidePoint(userLatLng);
+            }
         }, error => {
             console.error("Error al obtener la ubicación:", error);
         });
@@ -96,16 +99,29 @@ function checkIfUserIsInsidePoint(userLatLng) {
     const userLat = userLatLng[0];
     const userLng = userLatLng[1];
 
+    let isInsideAnyPoint = false;
+
     points.forEach((point, index) => {
         const pointLatLng = [point.lat, point.lng];
         const distance = calculateDistance(userLat, userLng, point.lat, point.lng);
 
         if (distance <= pointRadius) {
             // El usuario está dentro del radio del punto
-            alert(`¡Estás dentro del radio del Punto ${index + 1}!`);
-            calculateTimeDifferenceForDeparture(point.departureTime);
+            isInsideAnyPoint = true;
+            if (currentPointIndex !== index) {
+                currentPointIndex = index;
+                document.getElementById('location-status').innerHTML = `Ubicación: Punto ${index + 1}`;
+                calculateTimeDifferenceForDeparture(point.departureTime);
+            }
         }
     });
+
+    // Si el usuario no está dentro de ningún punto
+    if (!isInsideAnyPoint && currentPointIndex !== -1) {
+        currentPointIndex = -1;
+        document.getElementById('location-status').innerHTML = "Ubicación: No estás dentro de ningún punto.";
+        document.getElementById('time-difference').innerHTML = "";
+    }
 }
 
 // Calcular la distancia entre dos puntos usando la fórmula de Haversine
@@ -144,6 +160,17 @@ function calculateTimeDifferenceForDeparture(departureTime) {
     const formattedDifference = `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     document.getElementById('time-difference').innerHTML = `Diferencia de tiempo: <span class="time-difference">${formattedDifference}</span>`;
 }
+
+// Botón "Iniciar Navegación"
+document.getElementById('start-navigation').addEventListener('click', function() {
+    if (points.length === 0) {
+        alert("No hay puntos para navegar.");
+        return;
+    }
+
+    isNavigationActive = true;
+    getUserLocation(); // Iniciar la obtención de la ubicación en tiempo real
+});
 
 // Inicializar la ubicación del usuario al cargar la página
 getUserLocation();
