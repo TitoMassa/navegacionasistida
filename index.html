@@ -105,15 +105,6 @@
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 map.setView([lat, lng], 13);
-                if (userMarker) {
-                    map.removeLayer(userMarker);
-                }
-                userMarker = L.circle([lat, lng], {
-                    color: 'blue',
-                    fillColor: '#ccc',
-                    fillOpacity: 0.5,
-                    radius: 20
-                }).addTo(map);
             }, function(error) {
                 console.error('Error al obtener la ubicación:', error);
             });
@@ -133,9 +124,6 @@
                     updatePointsList();
                 }
             });
-
-            // Start watching position
-            watchPosition();
         });
 
         function watchPosition() {
@@ -163,7 +151,6 @@
                 fillOpacity: 0.5,
                 radius: 20
             }).addTo(map);
-            map.setView([lat, lng], 13);
 
             // Check if user is within 20 meters of current point
             if (currentPointIndex < points.length) {
