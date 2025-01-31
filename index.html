@@ -6,6 +6,7 @@
     <title>Navegación Asistida</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
     <style>
         body {
             margin: 0;
@@ -67,9 +68,12 @@
     <div id="mapid"></div>
     <div id="controls-container">
         <div id="controls">
+            <button onclick="startDrawing()">Dibujar Ruta</button>
             <button onclick="addPoint()">Agregar Punto</button>
             <button onclick="editPoint()">Editar Punto</button>
             <button onclick="deletePoint()">Eliminar Punto</button>
+            <button onclick="startNavigation()">Iniciar Navegación</button>
+            <button onclick="loadRoute()">Cargar Ruta Guardada</button>
             <input type="datetime-local" id="pointTime" placeholder="Hora">
         </div>
         <div id="timeDifference">Diferencia de Tiempo: 00:00</div>
@@ -77,8 +81,10 @@
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
     <script>
         let map;
+        let drawnItems;
         let routingControl;
         let points = [];
         let currentPointIndex = 0;
@@ -91,6 +97,22 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
+            // Initialize drawing control
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+            const drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems
+                },
+                draw: {
+                    polyline: true,
+                    rectangle: false,
+                    circle: false,
+                    marker: false
+                }
+            });
+            map.addControl(drawControl);
+
             // Initialize routing control
             routingControl = L.Routing.control({
                 waypoints: [],
@@ -98,6 +120,16 @@
                 fitSelectedRoutes: false,
                 createMarker: function() { return null; } // Disable default markers
             }).addTo(map);
+
+            // Event listener for drawing
+            map.on('draw:created', function(e) {
+                const type = e.layerType;
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+                if (type === 'polyline') {
+                    saveRoute(layer);
+                }
+            });
 
             // Start watching position
             watchPosition();
@@ -200,6 +232,41 @@
             }
 
             document.getElementById('timeDifference').innerText = `Diferencia de Tiempo: ${diffStr}`;
+        }
+
+        function startDrawing() {
+            map.on('draw:created', function(e) {
+                const type = e.layerType;
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+                if (type === 'polyline') {
+                    saveRoute(layer);
+                }
+            });
+        }
+
+        function saveRoute(layer) {
+            const route = layer.toGeoJSON();
+            localStorage.setItem('savedRoute', JSON.stringify(route));
+        }
+
+        function loadRoute() {
+            const savedRoute = localStorage.getItem('savedRoute');
+            if (savedRoute) {
+                const route = JSON.parse(savedRoute);
+                const polyline = L.geoJSON(route);
+                map.addLayer(polyline);
+                // Update routing control with the loaded route
+                const coordinates = route.geometry.coordinates;
+                const waypoints = coordinates.map(coord => L.latLng(coord[1], coord[0]));
+                routingControl.setWaypoints(waypoints);
+            }
+        }
+
+        function startNavigation() {
+            // Logic to start navigation
+            watchingPosition = true;
+            watchPosition();
         }
     </script>
 </body>
