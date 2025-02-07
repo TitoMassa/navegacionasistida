@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navegación Asistida</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #222;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #map {
+            width: 90%;
+            max-width: 800px;
+            height: 50vh;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            width: 90%;
+            max-width: 800px;
+            margin-top: 20px;
+        }
+
+        .controls input[type="time"], .controls button {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: none;
+            background-color: #444;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .controls button:hover{
+          background-color: #555;
+        }
+
+        .time-diff {
+            font-size: 3em;
+            font-weight: bold;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .arrival-card{
+          background-color: #333;
+          padding: 15px;
+          border-radius: 10px;
+          margin-top: 15px;
+          text-align: center;
+          width: 90%;
+          max-width: 780px; /* Match map's max width */
+        }
+
+
+        .status-green { color: #4CAF50; }
+        .status-red { color: #F44336; }
+        .status-blue { color: #2196F3; }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <label for="departure-time">Salida:</label>
+        <input type="time" id="departure-time" value="08:00">
+        <label for="arrival-time">Llegada:</label>
+        <input type="time" id="arrival-time" value="09:00">
+        <button id="start-navigation">Iniciar Navegación</button>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="time-diff" id="time-difference">±00:00</div>
+
+    <div class="arrival-card">
+      <p id="arrival-status">Tiempo restante: --:--</p>
+    </div>
+
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // --- Módulo de Mapa ---
+        const mapModule = (function() {
+            let map = L.map('map').setView([40.416775, -3.703790], 13); // Madrid as default
+            let startMarker = null;
+            let endMarker = null;
+            let userMarker = null;
+            let polyline = null;
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+
+            function init() {
+                map.on('click', handleMapClick);
+            }
+
+            function handleMapClick(e) {
+                if (!startMarker) {
+                    startMarker = L.marker(e.latlng, { draggable: true }).addTo(map)
+                        .bindPopup('<b>Punto de Inicio</b><br>Arrastra para ajustar.')
+                        .openPopup();
+                  startMarker.on('dragend', updatePolyline);
+                } else if (!endMarker) {
+                    endMarker = L.marker(e.latlng, { draggable:true }).addTo(map)
+                        .bindPopup('<b>Destino</b><br>Arrastra para ajustar.')
+                        .openPopup();
+                   endMarker.on('dragend', updatePolyline);
+                    updatePolyline();
+                }
+            }
+
+          function updatePolyline(){
+            if(startMarker && endMarker){
+              if(polyline){
+                map.removeLayer(polyline);
+              }
+              polyline = L.polyline([startMarker.getLatLng(), endMarker.getLatLng()], {color: 'blue'}).addTo(map);
+            }
+          }
+
+            function addOrUpdateUserMarker(latlng) {
+                if (userMarker) {
+                    userMarker.setLatLng(latlng);
+                } else {
+                    userMarker = L.marker(latlng, {icon: L.icon({
+                        iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', // Example icon
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34]
+                    })}).addTo(map);
+                }
+            }
+
+            function getStartMarker(){ return startMarker; }
+            function getEndMarker() { return endMarker;}
+
+            function resetMarkers(){
+              if(startMarker){ map.removeLayer(startMarker); startMarker = null;}
+              if(endMarker) { map.removeLayer(endMarker); endMarker = null;}
+              if(polyline) { map.removeLayer(polyline); polyline = null;}
+            }
+          
+
+            return {
+                init,
+                addOrUpdateUserMarker,
+                getStartMarker,
+                getEndMarker,
+                resetMarkers
+            };
+        })();
+
+        // --- Módulo de Geocalización ---
+        const geolocationModule = (function() {
+            let watchId = null;
+
+            function startTracking(successCallback, errorCallback) {
+                if (navigator.geolocation) {
+                    watchId = navigator.geolocation.watchPosition(
+                        successCallback,
+                        errorCallback,
+                        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+                    );
+                } else {
+                    alert("Geolocalización no soportada por este navegador.");
+                }
+            }
+
+            function stopTracking() {
+                if (watchId) {
+                    navigator.geolocation.clearWatch(watchId);
+                }
+            }
+          
+          function handleGeolocationError(error){
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                alert("El usuario denegó la solicitud de geolocalización.");
+                break;
+              case error.POSITION_UNAVAILABLE:
+                alert("La información de ubicación no está disponible.");
+                break;
+              case error.TIMEOUT:
+                alert("La solicitud para obtener la ubicación del usuario expiró.");
+                break;
+              case error.UNKNOWN_ERROR:
+                alert("Ocurrió un error desconocido.");
+                break;
+            }
+          }
+
+            return {
+                startTracking,
+                stopTracking,
+              handleGeolocationError
+            };
+        })();
+
+        // --- Módulo de Cálculo ---
+        const calculationModule = (function() {
+
+            function haversineDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371; // Radius of the earth in km
+                const dLat = deg2rad(lat2 - lat1);
+                const dLon = deg2rad(lon2 - lon1);
+                const a =
+                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                const distance = R * c; // Distance in km
+                return distance;
+            }
+
+            function deg2rad(deg) {
+                return deg * (Math.PI / 180);
+            }
+
+
+          function calculateTimeDifference(startTime, endTime, startCoords, endCoords, currentCoords) {
+            if (!startCoords || !endCoords || !currentCoords) return null;
+
+            const totalDistance = haversineDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
+            const distanceTravelled = haversineDistance(startCoords.lat, startCoords.lng, currentCoords.lat, currentCoords.lng);
+            const progress = totalDistance === 0 ? 1 : distanceTravelled / totalDistance;  // Avoid division by zero.  If totalDistance is 0, we assume we are at the destination.
+
+            const totalSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+            const expectedTimePassed = totalSeconds * progress;
+            const actualTimePassed = (Date.now() - startTime.getTime()) / 1000;
+
+            const difference = actualTimePassed - expectedTimePassed;
+            return difference; // in seconds
+          }
+
+          function formatTimeDifference(seconds) {
+              const sign = seconds >= 0 ? '+' : '-';
+              const absSeconds = Math.abs(seconds);
+              const minutes = Math.floor(absSeconds / 60);
+              const remainingSeconds = Math.floor(absSeconds % 60);
+              return `${sign}${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+          }
+
+          function calculateRemainingTime(endTime){
+            const now = new Date();
+            const remainingMilliseconds = endTime - now;
+            return remainingMilliseconds; // Returns milliseconds.
+          }
+          function formatRemainingTime(milliseconds){
+            if (milliseconds < 0) return "Llegó";
+
+              const minutes = Math.floor(milliseconds / (60 * 1000));
+              const seconds = Math.floor((milliseconds % (60 * 1000)) / 1000);
+
+              if(minutes < 2){
+                return "ARRIBANDO";
+              }
+              return `Tiempo restante: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+          }
+          function getStatusClass(difference){
+            if(difference/60 >= -2 && difference/60 <= 2) return "status-green";
+            if(difference/60 > 2) return "status-red";
+            return "status-blue";
+          }
+
+
+            return {
+                haversineDistance,
+                calculateTimeDifference,
+                formatTimeDifference,
+              calculateRemainingTime,
+              formatRemainingTime,
+              getStatusClass
+            };
+        })();
+
+
+      // --- Módulo Principal (Controlador) ---
+      const appController = (function (map, geo, calc) {
+        let startTime;
+        let endTime;
+        let intervalId;
+
+        function init() {
+            map.init();
+            document.getElementById('start-navigation').addEventListener('click', startNavigation);
+        }
+
+        function startNavigation() {
+          const departureTimeInput = document.getElementById('departure-time').value;
+          const arrivalTimeInput = document.getElementById('arrival-time').value;
+          const startMarker = map.getStartMarker();
+          const endMarker = map.getEndMarker();
+
+          if (!startMarker || !endMarker) {
+              alert("Por favor, selecciona un punto de inicio y un destino.");
+              return;
+          }
+            // Validate Times
+          if(!departureTimeInput || !arrivalTimeInput){
+            alert("Por favor, selecciona una hora de salida y llegada.");
+            return;
+          }
+
+
+          startTime = new Date();
+          startTime.setHours(parseInt(departureTimeInput.split(":")[0]), parseInt(departureTimeInput.split(":")[1]), 0, 0);
+
+          endTime = new Date();
+          endTime.setHours(parseInt(arrivalTimeInput.split(":")[0]), parseInt(arrivalTimeInput.split(":")[1]), 0, 0);
+
+            // Check if the times make sense.
+          if (startTime >= endTime) {
+              alert("La hora de salida debe ser anterior a la hora de llegada.");
+              return;
+          }
+
+            // Start tracking
+          geo.startTracking(updatePosition, geo.handleGeolocationError);
+          map.resetMarkers();  // Remove the initial markers once tracking starts.
+
+          clearInterval(intervalId); // Clear any previous interval.
+          intervalId = setInterval(updateDisplay, 1000);
+        }
+
+        function updatePosition(position) {
+            const latlng = { lat: position.coords.latitude, lng: position.coords.longitude };
+            map.addOrUpdateUserMarker(latlng);
+          //We do not center map, so user can still interact
+        }
+
+        function updateDisplay() {
+          const startMarker = map.getStartMarker();  // Could be null after reset.
+          const endMarker = map.getEndMarker();      // Could be null
+          const userMarker = map.userMarker;          // Could be null
+          const userCoords = userMarker ? userMarker.getLatLng() : null;
+          const startCoords = startMarker? startMarker.getLatLng() : null; //Use these to avoid errors.
+          const endCoords = endMarker ? endMarker.getLatLng() : null;
+
+          const timeDifference = calc.calculateTimeDifference(startTime, endTime, startCoords, endCoords, userCoords);
+
+          if(timeDifference !== null){ // only update if we have values.
+            const formattedDifference = calc.formatTimeDifference(timeDifference);
+            const statusClass = calc.getStatusClass(timeDifference);
+
+            const timeDiffElement = document.getElementById('time-difference');
+            timeDiffElement.textContent = formattedDifference;
+            timeDiffElement.className = `time-diff ${statusClass}`; // Reset class and apply new
+          }
+
+
+          const remainingMilliseconds = calc.calculateRemainingTime(endTime);
+          document.getElementById('arrival-status').textContent = calc.formatRemainingTime(remainingMilliseconds);
+
+        }
+
+
+          return {
+              init
+          };
+      })(mapModule, geolocationModule, calculationModule);
+
+
+      // --- Inicialización ---
+      document.addEventListener('DOMContentLoaded', appController.init);
+    </script>
+</body>
+</html>
